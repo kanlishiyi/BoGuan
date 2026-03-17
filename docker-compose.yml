@@ -1,0 +1,33 @@
+# ============================================================
+# 博观 Agent 管理平台 - Docker Compose
+# ============================================================
+# 使用方式：
+#   1. cp .env.example .env && 编辑 .env
+#   2. docker compose up -d
+#   3. 访问 http://localhost:8081
+# ============================================================
+
+services:
+  boguan-agent:
+    build: .
+    container_name: boguan-agent
+    ports:
+      - "${PLATFORM_PORT:-8081}:8081"
+    env_file:
+      - .env
+    volumes:
+      # 持久化数据（Agent 配置、用户、对话历史）
+      - boguan-data:/app/data
+      # 挂载自定义 Skills（可选）
+      - ./skills:/app/skills:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/login')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  boguan-data:
+    driver: local

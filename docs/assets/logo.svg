@@ -1,0 +1,16 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gBG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="34" fill="none" stroke="url(#gBG)" stroke-width="2.5" opacity=".8"/>
+  <circle cx="40" cy="40" r="24" fill="none" stroke="url(#gBG)" stroke-width="1.5" opacity=".4"/>
+  <circle cx="40" cy="40" r="14" fill="none" stroke="url(#gBG)" stroke-width="1" opacity=".3"/>
+  <line x1="40" y1="6" x2="40" y2="74" stroke="url(#gBG)" stroke-width=".6" opacity=".2"/>
+  <line x1="6" y1="40" x2="74" y2="40" stroke="url(#gBG)" stroke-width=".6" opacity=".2"/>
+  <circle cx="40" cy="40" r="7" fill="url(#gBG)" opacity=".9"/>
+  <circle cx="40" cy="40" r="3" fill="#fff" opacity=".9"/>
+</svg>

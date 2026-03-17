@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>博观告警分析平台</title>
+<style>
+/* ============================================================
+   CSS 变量 & 全局样式
+   ============================================================ */
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-card: #1a2235;
+  --bg-card-hover: #1f2a40;
+  --bg-input: #0d1320;
+  --border-color: #1e2d45;
+  --border-active: #3b82f6;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --glow-blue: 0 0 20px rgba(59,130,246,0.3);
+  --glow-cyan: 0 0 20px rgba(6,182,212,0.3);
+  --glow-green: 0 0 15px rgba(16,185,129,0.2);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ============================================================
+   布局
+   ============================================================ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---------- 博观 Logo ---------- */
+.logo {
+  width: 40px;
+  height: 40px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.logo svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 6px rgba(6,182,212,0.5));
+}
+
+/* Logo 雷达扫描光效动画 */
+.logo-sweep {
+  transform-origin: center center;
+  animation: radar-sweep 3s linear infinite;
+}
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Logo 外圈脉冲 */
+.logo-pulse-ring {
+  animation: logo-pulse 2.5s ease-out infinite;
+}
+
+@keyframes logo-pulse {
+  0%   { opacity: 0.6; r: 18; }
+  70%  { opacity: 0; r: 22; }
+  100% { opacity: 0; r: 22; }
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--text-primary), var(--accent-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(59,130,246,0.15);
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 20px;
+  color: var(--accent-blue);
+}
+
+/* 输入区域 */
+.input-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 600px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 0 16px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input-group:focus-within {
+  border-color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+}
+
+.input-group label {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  padding: 12px 0;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.input-group input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-analyze {
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  border: none;
+  border-radius: var(--radius);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.btn-analyze:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--glow-blue);
+}
+
+.btn-analyze:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-analyze.running {
+  background: linear-gradient(135deg, var(--accent-yellow), #f97316);
+  animation: pulse-btn 2s ease-in-out infinite;
+}
+
+@keyframes pulse-btn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+  50% { box-shadow: 0 0 15px 5px rgba(245,158,11,0.2); }
+}
+
+/* 主体内容 */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ============================================================
+   左侧面板 - 计划与思考路径
+   ============================================================ */
+.panel-left {
+  width: 420px;
+  min-width: 420px;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+}
+
+.panel-title {
+  padding: 16px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.panel-title .icon { font-size: 16px; }
+
+.plan-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.plan-container::-webkit-scrollbar { width: 4px; }
+.plan-container::-webkit-scrollbar-track { background: transparent; }
+.plan-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+/* 计划步骤 */
+.plan-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.plan-empty .icon { font-size: 48px; opacity: 0.3; }
+.plan-empty p { font-size: 14px; }
+
+.plan-step {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  position: relative;
+  animation: fadeSlideIn 0.4s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 时间线 */
+.plan-step::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 44px;
+  bottom: -14px;
+  width: 2px;
+  background: var(--border-color);
+}
+
+.plan-step:last-child::before { display: none; }
+
+.step-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  z-index: 1;
+  transition: all 0.3s;
+}
+
+.step-icon.pending {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.step-icon.in_progress {
+  background: rgba(59,130,246,0.15);
+  border: 2px solid var(--accent-blue);
+  color: var(--accent-blue);
+  box-shadow: var(--glow-blue);
+  animation: spin-icon 2s linear infinite;
+}
+
+@keyframes spin-icon {
+  from { box-shadow: 0 0 5px rgba(59,130,246,0.3); }
+  50% { box-shadow: 0 0 15px rgba(59,130,246,0.5); }
+  to { box-shadow: 0 0 5px rgba(59,130,246,0.3); }
+}
+
+.step-icon.completed {
+  background: rgba(16,185,129,0.15);
+  border: 2px solid var(--accent-green);
+  color: var(--accent-green);
+}
+
+.step-icon.cancelled {
+  background: rgba(100,116,139,0.15);
+  border: 2px solid var(--text-muted);
+  color: var(--text-muted);
+}
+
+.step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-content {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding-top: 4px;
+}
+
+.step-status {
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.step-status.in_progress { color: var(--accent-blue); }
+.step-status.completed { color: var(--accent-green); }
+.step-status.cancelled { color: var(--text-muted); text-decoration: line-through; }
+.step-status.bootstrap { color: var(--accent-cyan); }
+
+/* 已取消步骤整体淡化 */
+.plan-step.cancelled-step .step-content {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+/* 时间线已完成段变绿 */
+.plan-step.completed-step::before {
+  background: var(--accent-green);
+}
+
+/* 动态调整指示器 */
+.plan-adjust-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.plan-adjust-badge.new { background: rgba(59,130,246,0.2); color: var(--accent-blue); }
+.plan-adjust-badge.changed { background: rgba(245,158,11,0.2); color: var(--accent-yellow); }
+.plan-adjust-badge.bootstrap { background: rgba(6,182,212,0.18); color: var(--accent-cyan); }
+
+.plan-step.bootstrap-step .step-content {
+  color: #dbeafe;
+}
+
+.plan-step.bootstrap-step .step-icon.pending {
+  border-style: dashed;
+}
+
+/* ============================================================
+   右侧面板 - 详情与输出
+   ============================================================ */
+.panel-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detail-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.detail-container::-webkit-scrollbar { width: 6px; }
+.detail-container::-webkit-scrollbar-track { background: transparent; }
+.detail-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+.detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  gap: 12px;
+}
+
+.detail-empty .icon { font-size: 48px; opacity: 0.3; }
+
+/* 事件卡片 */
+.event-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  overflow: hidden;
+  animation: fadeSlideUp 0.3s ease-out;
+  transition: border-color 0.2s;
+}
+
+.event-card:hover {
+  border-color: rgba(59,130,246,0.3);
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.event-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.event-header:hover {
+  background: var(--bg-card-hover);
+}
+
+.event-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.event-tag.thinking { background: rgba(139,92,246,0.2); color: var(--accent-purple); }
+.event-tag.tool-call { background: rgba(59,130,246,0.2); color: var(--accent-blue); }
+.event-tag.tool-result { background: rgba(16,185,129,0.2); color: var(--accent-green); }
+.event-tag.assistant { background: rgba(6,182,212,0.2); color: var(--accent-cyan); }
+.event-tag.error { background: rgba(239,68,68,0.2); color: var(--accent-red); }
+.event-tag.retry { background: rgba(245,158,11,0.2); color: var(--accent-yellow); }
+.event-tag.skip { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.event-tag.plan { background: rgba(245,158,11,0.2); color: var(--accent-yellow); }
+
+/* 工具函数名（淡色辅助文本） */
+.tool-func-name {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* 重试/跳过卡片特殊边框 */
+.event-card.retry-card { border-color: rgba(245,158,11,0.3); }
+.event-card.skip-card { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.05); }
+
+.event-title {
+  font-size: 13px;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.event-toggle {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.event-toggle.open { transform: rotate(90deg); }
+
+.event-body {
+  display: none;
+  padding: 0 16px 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.event-body.open { display: block; padding-top: 14px; }
+
+.event-body pre {
+  font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-input);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* AI 回复区域 */
+.ai-response {
+  background: var(--bg-card);
+  border: 1px solid rgba(6,182,212,0.3);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  padding: 16px 20px;
+  animation: fadeSlideUp 0.3s ease-out;
+}
+
+.ai-response-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-response-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+/* 渲染后的 Markdown 样式 */
+.ai-response-text.rendered {
+  white-space: normal;
+}
+
+.ai-response-text.rendered h2 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  margin: 16px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ai-response-text.rendered h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin: 12px 0 6px;
+}
+
+.ai-response-text.rendered h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 10px 0 4px;
+}
+
+.ai-response-text.rendered p {
+  margin: 6px 0;
+  line-height: 1.8;
+}
+
+.ai-response-text.rendered ul,
+.ai-response-text.rendered ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.ai-response-text.rendered li {
+  margin: 3px 0;
+  line-height: 1.7;
+}
+
+.ai-response-text.rendered strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.ai-response-text.rendered code {
+  background: var(--bg-input);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--accent-yellow);
+}
+
+.ai-response-text.rendered hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 12px 0;
+}
+
+.ai-response-text .cursor {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: var(--accent-cyan);
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+/* 思考过程块 */
+.thinking-block {
+  background: var(--bg-card);
+  border: 1px solid rgba(139,92,246,0.3);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  padding: 16px 20px;
+  animation: fadeSlideUp 0.3s ease-out;
+}
+
+.thinking-block-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-purple);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.thinking-block-text {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.thinking-block-text .cursor {
+  display: inline-block;
+  width: 2px;
+  height: 14px;
+  background: var(--accent-purple);
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* 底部状态栏 */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 24px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-bar .status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+}
+
+.status-dot.idle { background: var(--text-muted); }
+.status-dot.running { background: var(--accent-blue); animation: pulse-dot 1.5s infinite; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 完成横幅 */
+.done-banner {
+  background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.1));
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  animation: fadeSlideUp 0.3s ease-out;
+}
+
+.done-banner h3 {
+  font-size: 15px;
+  color: var(--accent-green);
+  margin-bottom: 6px;
+}
+
+.done-banner p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.done-banner .btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-decoration: none;
+}
+
+.btn-download:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--glow-blue);
+}
+
+.btn-download .icon { font-size: 15px; }
+
+.btn-download.secondary {
+  background: rgba(139,92,246,0.2);
+  border: 1px solid rgba(139,92,246,0.4);
+  color: var(--accent-purple);
+}
+
+.btn-download.secondary:hover {
+  background: rgba(139,92,246,0.3);
+  box-shadow: 0 0 15px rgba(139,92,246,0.2);
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- 顶栏 -->
+  <div class="header">
+    <div class="header-left">
+      <!-- 博观 Logo: 雷达 + 洞察之眼 -->
+      <div class="logo">
+        <svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="gBG" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%"   stop-color="#3b82f6"/>
+              <stop offset="50%"  stop-color="#06b6d4"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+            <linearGradient id="gSweep" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"  stop-color="#06b6d4" stop-opacity="0"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.7"/>
+            </linearGradient>
+            <radialGradient id="gCenter" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"  stop-color="#06b6d4"/>
+              <stop offset="100%" stop-color="#3b82f6"/>
+            </radialGradient>
+          </defs>
+          <!-- 脉冲外环 -->
+          <circle class="logo-pulse-ring" cx="20" cy="20" r="18" fill="none" stroke="url(#gBG)" stroke-width="1" opacity="0.4"/>
+          <!-- 外圈 -->
+          <circle cx="20" cy="20" r="17" fill="none" stroke="url(#gBG)" stroke-width="1.8" opacity="0.8"/>
+          <!-- 中圈 -->
+          <circle cx="20" cy="20" r="12" fill="none" stroke="url(#gBG)" stroke-width="1" opacity="0.4"/>
+          <!-- 内圈 -->
+          <circle cx="20" cy="20" r="7" fill="none" stroke="url(#gBG)" stroke-width="0.8" opacity="0.3"/>
+          <!-- 十字线 -->
+          <line x1="20" y1="3" x2="20" y2="37" stroke="url(#gBG)" stroke-width="0.5" opacity="0.2"/>
+          <line x1="3" y1="20" x2="37" y2="20" stroke="url(#gBG)" stroke-width="0.5" opacity="0.2"/>
+          <!-- 雷达扫描扇区 -->
+          <path class="logo-sweep" d="M20,20 L20,3 A17,17 0 0,1 34.5,11.5 Z" fill="url(#gSweep)" opacity="0.5"/>
+          <!-- 中心亮点（洞察之眼） -->
+          <circle cx="20" cy="20" r="3.5" fill="url(#gCenter)" opacity="0.9"/>
+          <circle cx="20" cy="20" r="1.5" fill="#fff" opacity="0.9"/>
+        </svg>
+      </div>
+      <h1>博观告警分析平台</h1>
+      <span class="header-badge">AI Agent · Skills + MCP</span>
+    </div>
+  </div>
+
+  <!-- 输入栏 -->
+  <div class="input-bar">
+    <div class="input-group">
+      <label>告警 ID</label>
+      <input type="text" id="alertInput" value="488197" placeholder="请输入告警ID...">
+    </div>
+    <button class="btn-analyze" id="btnAnalyze" onclick="startAnalysis()">
+      开始分析
+    </button>
+  </div>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 左侧: 执行计划 -->
+    <div class="panel-left">
+      <div class="panel-title">
+        <span class="icon">&#x1f4cb;</span> 执行计划
+        <span id="planCount" style="margin-left:auto; font-size:12px; color:var(--text-muted);"></span>
+      </div>
+      <div class="plan-container" id="planContainer">
+        <div class="plan-empty" id="planEmpty">
+          <div class="icon">&#x1f9e0;</div>
+          <p>博观 AI 将先获取告警信息，再基于 Skill 和工具自动制定分析计划，执行过程中可动态调整</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧: 执行详情 -->
+    <div class="panel-right">
+      <div class="panel-title">
+        <span class="icon">&#x1f4e1;</span> 执行详情
+        <span id="eventCount" style="margin-left:auto; font-size:12px; color:var(--text-muted);"></span>
+      </div>
+      <div class="detail-container" id="detailContainer">
+        <div class="detail-empty" id="detailEmpty">
+          <div class="icon">&#x1f50d;</div>
+          <p>等待分析任务启动...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态栏 -->
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-dot idle" id="statusDot"></div>
+      <span id="statusText">就绪</span>
+    </div>
+    <div class="status-item">
+      <span id="statsText">博观告警分析平台 | MCP: 57 工具 | Skills: monitoring-assistant, alert-analysis</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 全局状态
+// ============================================================
+let isRunning = false;
+let eventSource = null;
+let currentPlan = [];
+let eventIndex = 0;
+let currentAiBlock = null;
+let currentThinkingBlock = null;   // 当前正在流式追加的思考块
+let thinkingBuffer = "";           // 思考文本缓冲区
+let aiBuffer = "";                 // AI 回复文本缓冲区
+let startTs = 0;
+let timerInterval = null;
+let planVersion = 0;               // 计划版本号，用于区分创建/更新/调整
+let knownPlanIds = new Set();      // 已知的计划步骤 ID 集合
+let bootstrapPlanActive = false;   // 正式计划生成前的临时引导计划
+
+const planContainer = document.getElementById('planContainer');
+const detailContainer = document.getElementById('detailContainer');
+const planEmpty = document.getElementById('planEmpty');
+const detailEmpty = document.getElementById('detailEmpty');
+const btnAnalyze = document.getElementById('btnAnalyze');
+const alertInput = document.getElementById('alertInput');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const statsText = document.getElementById('statsText');
+const planCount = document.getElementById('planCount');
+const eventCount = document.getElementById('eventCount');
+
+// ============================================================
+// 工具函数
+// ============================================================
+function getTime() {
+  return new Date().toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+function scrollToBottom(el) {
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * 格式化工具显示名：中文名 (函数名)
+ * @param {string} name        - 工具函数名，如 "get_alert_by_id"
+ * @param {string} displayName - 工具中文名，如 "获取告警详情"
+ * @param {string} [suffix]    - 可选后缀，如 "执行中..."
+ * @returns {string} HTML 字符串
+ */
+function fmtToolTitle(name, displayName, suffix) {
+  const cn = displayName && displayName !== name ? escapeHtml(displayName) : '';
+  const fn = escapeHtml(name);
+  const sfx = suffix ? ' ' + escapeHtml(suffix) : '';
+  if (cn) {
+    return `${cn} <span class="tool-func-name">(${fn})</span>${sfx}`;
+  }
+  return `${fn}${sfx}`;
+}
+
+function createBootstrapPlan(alertId) {
+  bootstrapPlanActive = true;
+  currentPlan = [
+    {
+      id: '__bootstrap_fetch__',
+      content: `正在获取告警 ${alertId} 的基础信息`,
+      status: 'in_progress',
+      _bootstrap: true,
+      _statusText: '正在调用 get_alert_by_id...'
+    },
+    {
+      id: '__bootstrap_plan__',
+      content: '正在结合 Skill、工具能力和告警上下文生成正式计划',
+      status: 'pending',
+      _bootstrap: true,
+      _statusText: '等待基础信息返回'
+    },
+    {
+      id: '__bootstrap_exec__',
+      content: '正式计划生成后将自动开始逐步执行',
+      status: 'pending',
+      _bootstrap: true,
+      _statusText: '即将开始'
+    }
+  ];
+  renderPlan();
+}
+
+function updateBootstrapPlan(phase) {
+  if (!bootstrapPlanActive || currentPlan.length === 0) return;
+
+  const fetchStep = currentPlan.find(t => t.id === '__bootstrap_fetch__');
+  const planStep = currentPlan.find(t => t.id === '__bootstrap_plan__');
+  const execStep = currentPlan.find(t => t.id === '__bootstrap_exec__');
+
+  if (phase === 'fetching') {
+    if (fetchStep) {
+      fetchStep.status = 'in_progress';
+      fetchStep._statusText = '正在调用 get_alert_by_id...';
+    }
+    if (planStep) {
+      planStep.status = 'pending';
+      planStep._statusText = '等待告警信息返回';
+    }
+  } else if (phase === 'planning') {
+    if (fetchStep) {
+      fetchStep.status = 'completed';
+      fetchStep._statusText = '基础信息已获取';
+    }
+    if (planStep) {
+      planStep.status = 'in_progress';
+      planStep._statusText = '正在生成正式计划...';
+    }
+  } else if (phase === 'executing') {
+    if (fetchStep) fetchStep.status = 'completed';
+    if (planStep) {
+      planStep.status = 'completed';
+      planStep._statusText = '正式计划已生成';
+    }
+    if (execStep) {
+      execStep.status = 'in_progress';
+      execStep._statusText = '正在根据正式计划执行';
+    }
+  }
+
+  renderPlan();
+}
+
+function clearBootstrapMarkers() {
+  bootstrapPlanActive = false;
+  currentPlan = currentPlan.map(t => {
+    const next = { ...t };
+    delete next._bootstrap;
+    delete next._statusText;
+    return next;
+  });
+}
+
+// ============================================================
+// 计划渲染
+// ============================================================
+function renderPlan() {
+  if (currentPlan.length === 0) return;
+
+  planEmpty.style.display = 'none';
+  // 清除旧步骤
+  planContainer.querySelectorAll('.plan-step').forEach(el => el.remove());
+
+  const active = currentPlan.filter(t => t.status !== 'cancelled');
+  const completed = currentPlan.filter(t => t.status === 'completed').length;
+  const cancelled = currentPlan.filter(t => t.status === 'cancelled').length;
+  let countText = bootstrapPlanActive ? '规划中...' : `${completed} / ${active.length}`;
+  if (cancelled > 0) countText += ` (${cancelled} 已调整)`;
+  planCount.textContent = countText;
+
+  currentPlan.forEach((todo, i) => {
+    const step = document.createElement('div');
+    const statusClass = todo.status || 'pending';
+    step.className = 'plan-step' +
+      (statusClass === 'cancelled' ? ' cancelled-step' : '') +
+      (statusClass === 'completed' ? ' completed-step' : '') +
+      (todo._bootstrap ? ' bootstrap-step' : '');
+    step.style.animationDelay = `${i * 0.05}s`;
+
+    let iconContent = '';
+    if (statusClass === 'completed') iconContent = '&#x2713;';
+    else if (statusClass === 'in_progress') iconContent = '&#x25CB;';
+    else if (statusClass === 'cancelled') iconContent = '&#x2715;';
+    else iconContent = `${i + 1}`;
+
+    let statusLabel = '';
+    if (statusClass === 'in_progress') statusLabel = `<div class="step-status ${todo._bootstrap ? 'bootstrap' : 'in_progress'}">&#x27A4; ${escapeHtml(todo._statusText || '执行中...')}</div>`;
+    else if (statusClass === 'completed') statusLabel = '<div class="step-status completed">&#x2713; 已完成</div>';
+    else if (statusClass === 'cancelled') statusLabel = '<div class="step-status cancelled">&#x2715; 已取消</div>';
+    else if (todo._bootstrap && todo._statusText) statusLabel = `<div class="step-status bootstrap">${escapeHtml(todo._statusText)}</div>`;
+
+    // 新增步骤标记
+    let badge = '';
+    if (todo._isNew) badge = '<span class="plan-adjust-badge new">新增</span>';
+    if (todo._isChanged) badge = '<span class="plan-adjust-badge changed">调整</span>';
+    if (todo._bootstrap) badge = '<span class="plan-adjust-badge bootstrap">预规划</span>';
+
+    step.innerHTML = `
+      <div class="step-icon ${statusClass}">${iconContent}</div>
+      <div class="step-body">
+        <div class="step-content">${escapeHtml(todo.content)}${badge}</div>
+        ${statusLabel}
+      </div>
+    `;
+
+    planContainer.appendChild(step);
+  });
+
+  scrollToBottom(planContainer);
+}
+
+// ============================================================
+// 事件卡片
+// ============================================================
+/**
+ * 添加事件卡片
+ * @param {string}  tag            - 标签文字
+ * @param {string}  tagClass       - 标签样式类
+ * @param {string}  title          - 标题（纯文本，自动转义）
+ * @param {string}  detail         - 详情文本
+ * @param {string}  [extraCardClass] - 卡片额外样式类
+ * @param {boolean} [titleIsHtml]  - title 是否为已转义的 HTML（默认 false）
+ */
+function addEventCard(tag, tagClass, title, detail, extraCardClass, titleIsHtml) {
+  detailEmpty.style.display = 'none';
+  eventIndex++;
+  eventCount.textContent = `${eventIndex} 事件`;
+
+  const card = document.createElement('div');
+  card.className = 'event-card' + (extraCardClass ? ' ' + extraCardClass : '');
+
+  const hasDetail = detail && detail.trim();
+  const toggleHtml = hasDetail ? '<span class="event-toggle">&#x25B6;</span>' : '';
+  const safeTitle = titleIsHtml ? title : escapeHtml(title);
+
+  card.innerHTML = `
+    <div class="event-header" ${hasDetail ? 'onclick="toggleDetail(this)"' : ''}>
+      <span class="event-tag ${tagClass}">${tag}</span>
+      <span class="event-title">${safeTitle}</span>
+      <span class="event-time">${getTime()}</span>
+      ${toggleHtml}
+    </div>
+    ${hasDetail ? `<div class="event-body"><pre>${escapeHtml(detail)}</pre></div>` : ''}
+  `;
+
+  detailContainer.appendChild(card);
+  scrollToBottom(detailContainer);
+}
+
+function toggleDetail(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.event-toggle');
+  if (body) {
+    body.classList.toggle('open');
+    if (toggle) toggle.classList.toggle('open');
+  }
+}
+
+// ============================================================
+// 简易 Markdown → HTML 渲染
+// ============================================================
+function renderMarkdown(text) {
+  // 先做 HTML 转义
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // 按行处理
+  const lines = html.split('\n');
+  let result = [];
+  let inList = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+
+    // 标题 ##
+    let hMatch = line.match(/^(#{1,4})\s+(.+)/);
+    if (hMatch) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      let level = hMatch[1].length;
+      result.push(`<h${level}>${formatInline(hMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    // 中文标题格式: 一、xxx
+    let cnMatch = line.match(/^([一二三四五六七八九十]+、.+)/);
+    if (cnMatch) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push(`<h2>${formatInline(cnMatch[1])}</h2>`);
+      continue;
+    }
+
+    // 列表项 - xxx / * xxx / • xxx 或 数字. xxx
+    let liMatch = line.match(/^\s*[-*•]\s+(.+)/);
+    let olMatch = line.match(/^\s*\d+[.)]\s+(.+)/);
+    if (liMatch || olMatch) {
+      if (!inList) { result.push('<ul>'); inList = true; }
+      let content = liMatch ? liMatch[1] : olMatch[1];
+      result.push(`<li>${formatInline(content)}</li>`);
+      continue;
+    }
+
+    // 分隔线
+    if (/^-{3,}$/.test(line.trim()) || /^\*{3,}$/.test(line.trim())) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      result.push('<hr>');
+      continue;
+    }
+
+    // 空行
+    if (!line.trim()) {
+      if (inList) { result.push('</ul>'); inList = false; }
+      continue;
+    }
+
+    // 普通段落
+    if (inList) { result.push('</ul>'); inList = false; }
+    result.push(`<p>${formatInline(line)}</p>`);
+  }
+
+  if (inList) result.push('</ul>');
+  return result.join('\n');
+}
+
+function formatInline(text) {
+  // **bold**
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // `code`
+  text = text.replace(/`(.+?)`/g, '<code>$1</code>');
+  return text;
+}
+
+// ============================================================
+// AI 流式文本块
+// ============================================================
+function startAiBlock() {
+  detailEmpty.style.display = 'none';
+  aiBuffer = "";
+  const block = document.createElement('div');
+  block.className = 'ai-response';
+  block.innerHTML = `
+    <div class="ai-response-label">&#x1f916; 助手回复</div>
+    <div class="ai-response-text"><span class="cursor"></span></div>
+  `;
+  detailContainer.appendChild(block);
+  currentAiBlock = block.querySelector('.ai-response-text');
+  scrollToBottom(detailContainer);
+}
+
+function appendAiToken(text) {
+  if (!currentAiBlock) startAiBlock();
+  // 累积到缓冲区
+  aiBuffer += text;
+  // 去除尾部多余换行
+  let displayText = aiBuffer.replace(/\n{3,}/g, '\n\n').replace(/\n+$/, '');
+
+  const cursor = currentAiBlock.querySelector('.cursor');
+  if (cursor) cursor.remove();
+  // 流式阶段用 textContent 保证连续性
+  currentAiBlock.textContent = displayText;
+  // 重新添加光标
+  const cursorEl = document.createElement('span');
+  cursorEl.className = 'cursor';
+  currentAiBlock.appendChild(cursorEl);
+  scrollToBottom(detailContainer);
+}
+
+function endAiBlock() {
+  if (currentAiBlock) {
+    const cursor = currentAiBlock.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    // 结束时：将缓冲区的 Markdown 渲染为 HTML
+    if (aiBuffer) {
+      let finalText = aiBuffer.replace(/\n{3,}/g, '\n\n').trim();
+      currentAiBlock.innerHTML = renderMarkdown(finalText);
+      currentAiBlock.classList.add('rendered');
+    }
+    currentAiBlock = null;
+  }
+  aiBuffer = "";
+}
+
+// ============================================================
+// 思考过程流式文本块
+// ============================================================
+function startThinkingBlock() {
+  detailEmpty.style.display = 'none';
+  thinkingBuffer = "";
+  const block = document.createElement('div');
+  block.className = 'thinking-block';
+  block.innerHTML = `
+    <div class="thinking-block-label">&#x1f4ad; 思考过程</div>
+    <div class="thinking-block-text"><span class="cursor"></span></div>
+  `;
+  detailContainer.appendChild(block);
+  currentThinkingBlock = block.querySelector('.thinking-block-text');
+  scrollToBottom(detailContainer);
+}
+
+function appendThinkingToken(text) {
+  if (!currentThinkingBlock) startThinkingBlock();
+  // 累积到缓冲区
+  thinkingBuffer += text;
+  // 去除尾部多余换行，保留段落间的双换行
+  let displayText = thinkingBuffer.replace(/\n{3,}/g, '\n\n').replace(/\n+$/, '');
+
+  const cursor = currentThinkingBlock.querySelector('.cursor');
+  if (cursor) cursor.remove();
+  // 使用 textContent 整体设置，避免逐 token 换行问题
+  currentThinkingBlock.textContent = displayText;
+  // 重新添加光标
+  const cursorEl = document.createElement('span');
+  cursorEl.className = 'cursor';
+  currentThinkingBlock.appendChild(cursorEl);
+  scrollToBottom(detailContainer);
+}
+
+function endThinkingBlock() {
+  if (currentThinkingBlock) {
+    const cursor = currentThinkingBlock.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    // 最终显示完整文本（保留段落换行）
+    if (thinkingBuffer) {
+      let finalText = thinkingBuffer.replace(/\n{3,}/g, '\n\n').trim();
+      currentThinkingBlock.textContent = finalText;
+    }
+    currentThinkingBlock = null;
+  }
+  thinkingBuffer = "";
+}
+
+// ============================================================
+// SSE 事件处理
+// ============================================================
+function handleSSE(eventType, data) {
+  switch (eventType) {
+    case 'start':
+      createBootstrapPlan(data.alert_id);
+      addEventCard('开始', 'plan', `分析告警 ${data.alert_id}`, `查询: ${data.query}\n时间: ${data.timestamp}`);
+      break;
+
+    case 'llm_start':
+      endAiBlock();
+      endThinkingBlock();
+      addEventCard('推理', 'thinking', `大模型第 ${data.step} 轮推理`, '');
+      break;
+
+    case 'thinking':
+      // 流式追加到同一个思考块，不再每次创建新卡片
+      appendThinkingToken(data.text);
+      break;
+
+    case 'token':
+      endThinkingBlock();   // 开始输出正式回复时，结束思考块
+      appendAiToken(data.text);
+      break;
+
+    case 'plan':
+      endAiBlock();
+      endThinkingBlock();
+      planVersion++;
+      if (bootstrapPlanActive) clearBootstrapMarkers();
+
+      let planAction = '';       // 用于事件卡片标签
+      let planActionClass = '';  // 用于事件卡片样式
+      let planDesc = '';
+
+      if (data.merge) {
+        // 合并更新 - 检测是否有新增/取消步骤（即动态调整）
+        const updates = data.todos || [];
+        let hasNewSteps = false;
+        let hasCancelled = false;
+        let hasStatusChange = false;
+
+        updates.forEach(upd => {
+          const idx = currentPlan.findIndex(t => t.id === upd.id);
+          if (idx >= 0) {
+            const old = currentPlan[idx];
+            // 检测步骤被取消
+            if (upd.status === 'cancelled' && old.status !== 'cancelled') {
+              hasCancelled = true;
+              currentPlan[idx] = { ...old, ...upd, _isChanged: true };
+            }
+            // 检测普通状态变更
+            else if (upd.status !== old.status) {
+              hasStatusChange = true;
+              currentPlan[idx] = { ...old, ...upd };
+            } else {
+              currentPlan[idx] = { ...old, ...upd };
+            }
+          } else {
+            // 新增步骤
+            hasNewSteps = true;
+            currentPlan.push({ ...upd, _isNew: true });
+          }
+        });
+
+        if (hasNewSteps || hasCancelled) {
+          planAction = '计划调整';
+          planActionClass = 'retry';  // 黄色高亮
+          let changes = [];
+          if (hasNewSteps) changes.push('新增步骤');
+          if (hasCancelled) changes.push('取消步骤');
+          planDesc = `动态调整 (${changes.join('、')})`;
+        } else {
+          planAction = '计划更新';
+          planActionClass = 'plan';
+          planDesc = '执行进度更新';
+        }
+      } else {
+        // 全新计划
+        currentPlan = (data.todos || []).map(t => ({ ...t }));
+        knownPlanIds = new Set(currentPlan.map(t => t.id));
+        planAction = '制定计划';
+        planActionClass = 'plan';
+        planDesc = `基于告警情况制定分析计划 (${currentPlan.length} 步)`;
+      }
+
+      renderPlan();
+      addEventCard(planAction, planActionClass,
+        planDesc,
+        currentPlan.map((t, i) => {
+          const icons = { pending: '[ ]', in_progress: '[>]', completed: '[x]', cancelled: '[-]' };
+          let line = `${icons[t.status] || '[ ]'} ${t.content}`;
+          if (t._isNew) line += '  ← 新增';
+          if (t._isChanged) line += '  ← 调整';
+          return line;
+        }).join('\n')
+      );
+      break;
+
+    case 'plan_updated':
+      renderPlan();
+      break;
+
+    case 'tool_call':
+      endAiBlock();
+      endThinkingBlock();
+      // 触发引导计划状态更新
+      if (bootstrapPlanActive && data.name === 'get_alert_by_id') {
+        updateBootstrapPlan('fetching');
+      }
+      addEventCard('调用', 'tool-call',
+        fmtToolTitle(data.name, data.display_name),
+        `参数:\n${data.args}`, '', true);
+      break;
+
+    case 'tool_start':
+      // 仅用于引导计划检测（兜底），不再创建重复的事件卡片
+      if (bootstrapPlanActive && data.name === 'get_alert_by_id') {
+        updateBootstrapPlan('fetching');
+      }
+      break;
+
+    case 'tool_retry':
+      addEventCard(
+        `重试 ${data.attempt}/${data.max_retries}`,
+        'retry',
+        fmtToolTitle(data.name, data.display_name, `第${data.attempt}次调用失败，正在重试...`),
+        `错误信息: ${data.error || '未知错误'}`,
+        'retry-card', true
+      );
+      break;
+
+    case 'tool_end':
+      if (bootstrapPlanActive && data.name === 'get_alert_by_id') {
+        updateBootstrapPlan('planning');
+      }
+      addEventCard('返回', 'tool-result',
+        fmtToolTitle(data.name, data.display_name, '完成'),
+        data.result || '', '', true);
+      break;
+
+    case 'tool_skip':
+      addEventCard(
+        `跳过`,
+        'skip',
+        fmtToolTitle(data.name, data.display_name, `重试${data.retries || 3}次均失败，已跳过`),
+        data.error || '',
+        'skip-card', true
+      );
+      break;
+
+    case 'llm_end':
+      if (bootstrapPlanActive && planVersion > 0) {
+        updateBootstrapPlan('executing');
+      }
+      endAiBlock();
+      endThinkingBlock();
+      break;
+
+    case 'error':
+      endAiBlock();
+      endThinkingBlock();
+      addEventCard('错误', 'error', data.message, data.message);
+      break;
+
+    case 'done':
+      endAiBlock();
+      endThinkingBlock();
+      // 将所有尚处于 in_progress 的计划步骤自动标记为 completed
+      let planChanged = false;
+      currentPlan.forEach(step => {
+        if (step.status === 'in_progress') {
+          step.status = 'completed';
+          planChanged = true;
+        }
+      });
+      if (planChanged) renderPlan();
+      // 完成横幅
+      const banner = document.createElement('div');
+      banner.className = 'done-banner';
+      const elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+      let bannerHtml = `
+        <h3>&#x2705; 分析完成</h3>
+        <p>推理轮次: ${data.steps} | 总耗时: ${elapsed}s | 事件数: ${eventIndex}</p>
+      `;
+      // 如果有报告可下载，显示下载按钮
+      if (data.report_id) {
+        bannerHtml += `
+          <div class="btn-row">
+            <a class="btn-download" href="/api/report/${encodeURIComponent(data.report_id)}" target="_blank">
+              <span class="icon">&#x1f4c4;</span> 下载 PDF 报告
+            </a>
+            <button class="btn-download secondary" onclick="previewReport('${data.report_id}')">
+              <span class="icon">&#x1f50d;</span> 预览报告原文
+            </button>
+          </div>
+        `;
+      }
+      banner.innerHTML = bannerHtml;
+      detailContainer.appendChild(banner);
+      scrollToBottom(detailContainer);
+      stopRunning();
+      break;
+  }
+}
+
+// ============================================================
+// 启动 / 停止
+// ============================================================
+function startAnalysis() {
+  const alertId = alertInput.value.trim();
+  if (!alertId) {
+    alertInput.focus();
+    return;
+  }
+
+  if (isRunning) {
+    // 停止
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    stopRunning();
+    return;
+  }
+
+  // 重置
+  isRunning = true;
+  currentPlan = [];
+  eventIndex = 0;
+  currentAiBlock = null;
+  currentThinkingBlock = null;
+  thinkingBuffer = "";
+  aiBuffer = "";
+  planVersion = 0;
+  knownPlanIds = new Set();
+  bootstrapPlanActive = false;
+  startTs = Date.now();
+
+  planContainer.querySelectorAll('.plan-step').forEach(el => el.remove());
+  planEmpty.style.display = 'flex';
+  planCount.textContent = '';
+
+  detailContainer.querySelectorAll('.event-card, .ai-response, .thinking-block, .done-banner').forEach(el => el.remove());
+  detailEmpty.style.display = 'flex';
+  eventCount.textContent = '';
+
+  btnAnalyze.textContent = '停止分析';
+  btnAnalyze.classList.add('running');
+  statusDot.className = 'status-dot running';
+  statusText.textContent = '分析中...';
+  alertInput.disabled = true;
+
+  // 计时器
+  timerInterval = setInterval(() => {
+    const s = ((Date.now() - startTs) / 1000).toFixed(0);
+    statusText.textContent = `分析中... ${s}s`;
+  }, 1000);
+
+  // SSE 连接
+  eventSource = new EventSource(`/api/analyze/${encodeURIComponent(alertId)}`);
+
+  eventSource.onopen = () => {
+    console.log('SSE connected');
+  };
+
+  // 监听所有自定义事件
+  const eventTypes = ['start', 'llm_start', 'llm_end', 'token', 'thinking',
+    'plan', 'plan_updated', 'tool_call', 'tool_start', 'tool_end',
+    'tool_retry', 'tool_skip', 'error', 'done'];
+
+  eventTypes.forEach(type => {
+    eventSource.addEventListener(type, (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        handleSSE(type, data);
+      } catch (err) {
+        console.error('Parse error:', type, e.data, err);
+      }
+    });
+  });
+
+  eventSource.onerror = (e) => {
+    console.error('SSE error:', e);
+    if (eventSource.readyState === EventSource.CLOSED) {
+      stopRunning();
+    }
+  };
+}
+
+function stopRunning() {
+  isRunning = false;
+  if (eventSource) { eventSource.close(); eventSource = null; }
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+  btnAnalyze.textContent = '开始分析';
+  btnAnalyze.classList.remove('running');
+  statusDot.className = 'status-dot idle';
+  const elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+  statusText.textContent = `完成 (${elapsed}s)`;
+  alertInput.disabled = false;
+}
+
+// Enter 键触发
+alertInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startAnalysis();
+});
+
+// 预览报告原文
+async function previewReport(reportId) {
+  try {
+    const resp = await fetch(`/api/report/${encodeURIComponent(reportId)}/preview`);
+    if (!resp.ok) throw new Error('获取报告失败');
+    const data = await resp.json();
+
+    // 创建模态弹窗显示报告原文
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    `;
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      width: 70vw; max-width: 800px; max-height: 80vh;
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      border-radius: var(--radius); display: flex; flex-direction: column;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    `;
+
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+    `;
+    header.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:16px;">&#x1f4cb;</span>
+        <span style="font-weight:600; color:var(--text-primary);">报告原文预览</span>
+        <span style="font-size:12px; color:var(--text-muted);">告警 ${data.alert_id} | ${data.timestamp}</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <a class="btn-download" href="/api/report/${encodeURIComponent(reportId)}" target="_blank"
+           style="font-size:12px; padding:5px 14px;">
+          &#x1f4c4; 下载 PDF
+        </a>
+        <button onclick="this.closest('div[style]').parentElement.parentElement.remove()"
+                style="background:none; border:1px solid var(--border-color); border-radius:6px;
+                       color:var(--text-secondary); cursor:pointer; padding:5px 12px; font-size:12px;">
+          关闭
+        </button>
+      </div>
+    `;
+
+    const body = document.createElement('div');
+    body.style.cssText = `
+      flex: 1; overflow-y: auto; padding: 20px;
+    `;
+    const pre = document.createElement('pre');
+    pre.style.cssText = `
+      font-family: 'SF Mono', 'Consolas', monospace; font-size: 13px;
+      line-height: 1.8; color: var(--text-secondary);
+      white-space: pre-wrap; word-break: break-word;
+      margin: 0;
+    `;
+    pre.textContent = data.text;
+    body.appendChild(pre);
+
+    modal.appendChild(header);
+    modal.appendChild(body);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  } catch (err) {
+    alert('获取报告失败: ' + err.message);
+  }
+}
+</script>
+
+</body>
+</html>
