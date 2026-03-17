@@ -1,7 +1,7 @@
 """
-Agent CRUD API
-==============
-Agent 的增删改查接口。
+Agent API
+=========
+Agent 的增删改查接口，以及默认 Agent 创建逻辑。
 """
 
 import json
@@ -19,22 +19,26 @@ from .auth import require_auth
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
+
 # ============================================================
 # 数据存储
 # ============================================================
 
 def _load() -> List[dict]:
+    """从磁盘加载所有 Agent 配置。"""
     fp = settings.AGENTS_DATA_FILE
     if os.path.exists(fp):
         try:
             with open(fp, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
+            # 读取失败时返回空列表，避免整个接口挂掉
             pass
     return []
 
 
 def _save(agents: List[dict]):
+    """将 Agent 配置列表写回磁盘。"""
     fp = settings.AGENTS_DATA_FILE
     os.makedirs(os.path.dirname(fp), exist_ok=True)
     with open(fp, "w", encoding="utf-8") as f:
@@ -44,17 +48,22 @@ def _save(agents: List[dict]):
 def find_agent(agent_id: str) -> Optional[dict]:
     """根据 ID 查找 Agent。"""
     for a in _load():
-        if a["id"] == agent_id:
+        if a.get("id") == agent_id:
             return a
     return None
 
 
 def ensure_default_agent():
-    """首次启动时创建默认 Agent。"""
-    from ..config import settings as s
+    """
+    首次启动时创建默认 Agent。
+
+    - 使用配置的 MCP_SERVER_URL 作为默认工具源
+    - 绑定内置的告警分析 / 监控助手 / PDF 报告技能
+    """
     agents = _load()
     if agents:
         return
+
     now = time.strftime("%Y-%m-%d %H:%M:%S")
     default = {
         "id": "default-alert",
@@ -77,7 +86,7 @@ def ensure_default_agent():
         ),
         "skills": ["alert-analysis", "monitoring-assistant", "pdf-report"],
         "mcp_servers": [
-            {"name": "monitoring", "url": s.MCP_SERVER_URL, "transport": "streamable_http"}
+            {"name": "monitoring", "url": settings.MCP_SERVER_URL, "transport": "streamable_http"}
         ],
         "llm_config": None,
         "created_at": now,
@@ -90,6 +99,7 @@ def ensure_default_agent():
 # ============================================================
 # 路由
 # ============================================================
+
 
 @router.get("")
 async def list_agents(user: dict = Depends(require_auth)):
@@ -116,10 +126,16 @@ async def create_agent(body: AgentCreate, user: dict = Depends(require_auth)):
 
 @router.put("/{aid}")
 async def update_agent(aid: str, body: AgentUpdate, user: dict = Depends(require_auth)):
-    """更新 Agent 配置。"""
+    """
+    更新 Agent 配置（支持热更新）.
+
+    - 写回 agents.json
+    - 使运行时缓存失效（invalidate_runtime）
+    - 清理当前对话线程（cleanup_thread），保证后续对话立刻使用新配置
+    """
     agents = _load()
     for i, a in enumerate(agents):
-        if a["id"] == aid:
+        if a.get("id") == aid:
             d = body.dict()
             d["mcp_servers"] = [
                 s.dict() if hasattr(s, "dict") else s
@@ -129,26 +145,34 @@ async def update_agent(aid: str, body: AgentUpdate, user: dict = Depends(require
             a["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
             agents[i] = a
             _save(agents)
+
+            # 热更新：使运行时缓存失效 + 清理当前线程
             invalidate_runtime(aid)
+            cleanup_thread(aid)
+
             return a
     raise HTTPException(404, "Agent 不存在")
 
 
 @router.delete("/{aid}")
 async def delete_agent(aid: str, user: dict = Depends(require_auth)):
-    """删除 Agent 及其关联数据。"""
+    """删除 Agent 及其关联数据（运行时 + 线程 + 历史）。"""
     agents = _load()
-    n = [a for a in agents if a["id"] != aid]
+    n = [a for a in agents if a.get("id") != aid]
     if len(n) == len(agents):
         raise HTTPException(404)
     _save(n)
+
+    # 清理运行时和线程
     invalidate_runtime(aid)
     cleanup_thread(aid)
 
-    # 删除对话历史
+    # 删除对话历史文件
     from .history import _history_path
+
     fp = _history_path(aid)
     if os.path.exists(fp):
         os.remove(fp)
 
     return {"ok": True}
+
