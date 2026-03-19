@@ -30,7 +30,7 @@ from .config import settings
 # 设置 API Key 环境变量（部分库从环境变量读取）
 os.environ.setdefault("ANTHROPIC_API_KEY", settings.ANTHROPIC_API_KEY)
 
-from .api import auth, agents, chat, history
+from .api import auth, agents, chat, history, report
 from .api.auth import ensure_default_user
 from .api.agents import ensure_default_agent
 from .core.skills import discover_skills
@@ -50,6 +50,7 @@ app.include_router(auth.router)
 app.include_router(agents.router)
 app.include_router(chat.router)
 app.include_router(history.router)
+app.include_router(report.router)
 
 
 # ============================================================

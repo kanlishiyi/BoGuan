@@ -127,6 +127,34 @@ class _Settings:
     def PDF_WATERMARK_TEXT(self) -> str:
         return os.getenv("PDF_WATERMARK_TEXT", "boguan")
 
+    # ---- 郵件發送 ----
+    @property
+    def SMTP_HOST(self) -> str:
+        return os.getenv("SMTP_HOST", "")
+
+    @property
+    def SMTP_PORT(self) -> int:
+        try:
+            return int(os.getenv("SMTP_PORT", "587"))
+        except ValueError:
+            return 587
+
+    @property
+    def SMTP_USER(self) -> str:
+        return os.getenv("SMTP_USER", "")
+
+    @property
+    def SMTP_PASSWORD(self) -> str:
+        return os.getenv("SMTP_PASSWORD", "")
+
+    @property
+    def SMTP_FROM(self) -> str:
+        return os.getenv("SMTP_FROM", "")
+
+    @property
+    def SMTP_USE_TLS(self) -> bool:
+        return os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes", "y"}
+
 
 # 全局单例
 settings = _Settings()

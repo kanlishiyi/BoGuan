@@ -234,9 +234,111 @@ body {
    对话界面
    ============================================================ */
 .chat-wrap { display:flex; flex-direction:column; height:100%; }
+.chat-main { flex:1; display:flex; min-height:0; }
 .chat-messages { flex:1; overflow-y:auto; padding:16px 20px; }
 .chat-messages::-webkit-scrollbar { width:5px; }
 .chat-messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+/* 右侧任务计划栏 */
+.chat-plan {
+  width:300px;
+  max-width:320px;
+  border-left:1px solid var(--border);
+  background:var(--bg-secondary);
+  padding:12px 12px 12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.chat-plan-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:12px;
+  color:var(--text-2);
+}
+.chat-plan-title {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-weight:600;
+  color:var(--text-1);
+}
+.chat-plan-mode {
+  font-size:11px;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  color:var(--text-3);
+}
+.chat-plan-count {
+  font-size:11px;
+  color:var(--text-3);
+}
+.plan-hint {
+  font-size:11px;
+  color:var(--text-3);
+}
+.plan-container {
+  flex:1;
+  overflow-y:auto;
+  padding-right:4px;
+}
+.plan-container::-webkit-scrollbar { width:4px; }
+.plan-container::-webkit-scrollbar-track { background:transparent; }
+.plan-container::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+.plan-empty {
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  color:var(--text-3);
+  text-align:center;
+  padding:8px;
+}
+.plan-empty .icon { font-size:32px; opacity:0.35; }
+.plan-empty p { font-size:12px; line-height:1.6; }
+.plan-step {
+  position:relative;
+  padding:8px 8px 8px 20px;
+  margin-bottom:4px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--bg-input);
+  font-size:12px;
+}
+.plan-step::before {
+  content:'';
+  position:absolute;
+  left:8px;
+  top:10px;
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:var(--text-3);
+}
+.plan-step.in_progress-step::before { background:var(--blue); box-shadow:0 0 6px rgba(59,130,246,0.7); }
+.plan-step.completed-step::before { background:var(--green); }
+.plan-step-title {
+  font-weight:600;
+  color:var(--text-1);
+  margin-bottom:2px;
+}
+.plan-step-desc {
+  color:var(--text-2);
+  line-height:1.5;
+}
+.plan-step-log {
+  margin-top:6px;
+  padding:6px 8px;
+  border-radius:6px;
+  background:rgba(15,23,42,0.9);
+  color:var(--text-3);
+  font-size:11px;
+  white-space:pre-wrap;
+}
 
 /* 消息 */
 .msg { margin-bottom:16px; display:flex; gap:10px; animation:fadeUp .3s ease-out; }
@@ -313,6 +415,40 @@ body {
   background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.12);
 }
 .turn-separator .turn-label .turn-icon { font-size:12px; }
+
+/* 报告操作区（下载 / 发送邮件） */
+.report-actions {
+  margin: 4px 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+}
+.report-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(15,23,42,0.9);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .2s;
+}
+.report-actions .btn.primary {
+  border-color: var(--blue);
+  color: #fff;
+  background: linear-gradient(135deg,var(--blue),var(--cyan));
+}
+.report-actions .btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.report-actions .btn.primary:hover {
+  box-shadow: 0 0 12px rgba(59,130,246,0.35);
+  transform: translateY(-1px);
+}
 
 /* 多轮指示器（输入栏上方） */
 .multiturn-hint {
@@ -484,6 +620,7 @@ function getCS(aid) {
       msgLog: [],           // 结构化消息日志，用于持久化
       historyLoaded: false, // 是否已从服务端加载历史
       turn: 0,              // 当前轮次
+      plan: [],             // 当前轮任务计划
     };
   }
   return chatStates[aid];
@@ -598,6 +735,7 @@ function renderConfigForm() {
   const a = agents.find(x => x.id === selectedId);
   if (!a) return;
   const isNew = a._isNew;
+  const mode = (a.llm_config && a.llm_config.mode) || 'react';
   const mcpRows = (a.mcp_servers||[]).map((s,i) => `
     <div class="mcp-item" data-idx="${i}">
       <input placeholder="名称" value="${esc(s.name)}" data-field="name" style="max-width:100px">
@@ -658,6 +796,15 @@ function renderConfigForm() {
           </label>
         `).join('')}
         ${skills.length===0?'<div style="color:var(--text-3);font-size:12px;">未发现可用 Skill（请在 skills/ 目录下创建）</div>':''}
+      </div>
+    </div>
+
+    <!-- 推理模式 -->
+    <div class="form-section">
+      <div class="form-section-title">🧭 推理模式</div>
+      <div class="form-row" style="font-size:12px; color:var(--text-2); display:flex; flex-direction:column; gap:4px;">
+        <label><input type="radio" name="cfgMode" value="react" ${mode==='react'?'checked':''}> ReAct 模式（边思考边行动，适合快速探索和排查）</label>
+        <label><input type="radio" name="cfgMode" value="plan_solve" ${mode==='plan_solve'?'checked':''}> Plan-and-Solver 模式（先给出完整任务计划，再按计划逐步执行）</label>
       </div>
     </div>
 
@@ -746,7 +893,9 @@ function _gatherForm() {
     system_prompt: document.getElementById('cfgPrompt').value,
     skills: checkedSkills,
     mcp_servers: mcps,
-    llm_config: null,
+    llm_config: {
+      mode: (document.querySelector('input[name="cfgMode"]:checked') || {}).value || 'react',
+    },
   };
 }
 
@@ -834,7 +983,25 @@ function ensureChatContainer(aid) {
     container.id = 'chatWrap-' + aid;
     container.style.display = 'none';
     container.innerHTML = `
-      <div class="chat-messages" id="chatMsg-${aid}"></div>
+      <div class="chat-main">
+        <div class="chat-messages" id="chatMsg-${aid}"></div>
+        <div class="chat-plan" id="chatPlan-${aid}">
+          <div class="chat-plan-header">
+            <div class="chat-plan-title">
+              <span>📋</span><span>任务计划</span>
+            </div>
+            <span class="chat-plan-mode" id="planMode-${aid}"></span>
+            <span class="chat-plan-count" id="planCount-${aid}"></span>
+          </div>
+          <div class="plan-hint" id="planHint-${aid}"></div>
+          <div class="plan-container" id="planContainer-${aid}">
+            <div class="plan-empty" id="planEmpty-${aid}">
+              <div class="icon">📋</div>
+              <p>本轮还没有明确的任务计划，Agent 可能会采用即兴 ReAct 策略。</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="multiturn-hint" id="mtHint-${aid}" style="display:none;">
         <span class="mt-dot"></span>
         <span id="mtHintText-${aid}">多轮对话模式 · 基于上下文继续</span>
@@ -912,6 +1079,7 @@ function newConversation(aid) {
   cs.aiEl = null; cs.thinkEl = null; cs.thinkBuf = '';
   cs.threadId = ''; cs.streaming = false;
   cs.msgLog = [];
+  cs.plan = [];
   cs.turn = 0;
   cs.historyLoaded = false;
   cs._initBar = null;
@@ -919,6 +1087,8 @@ function newConversation(aid) {
   // 清空 DOM
   const msgEl = document.getElementById('chatMsg-' + aid);
   if (msgEl) msgEl.innerHTML = '';
+  // 清空计划视图
+  renderPlan(aid);
   // 隐藏多轮提示
   const hint = document.getElementById('mtHint-' + aid);
   if (hint) hint.style.display = 'none';
@@ -1002,7 +1172,14 @@ function renderHistoryMessages(aid, messages) {
         msgEl.appendChild(_mkEl(`<div class="msg msg-user"><div class="msg-bubble">${esc(m.text)}</div></div>`));
         break;
       case 'ai':
-        msgEl.appendChild(_mkEl(`<div class="msg"><div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="ai-text">${esc(m.text)}</div></div></div>`));
+        msgEl.appendChild(_mkEl(
+          `<div class="msg">
+             <div class="msg-avatar">${avatar}</div>
+             <div class="msg-body">
+               <div class="ai-text">${esc(m.text)}</div>
+             </div>
+           </div>`
+        ));
         break;
       case 'think':
         msgEl.appendChild(_mkEl(`<div class="msg"><div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="think-block"><div class="think-label">💭 思考过程</div><div class="think-text">${esc(m.text)}</div></div></div></div>`));
@@ -1034,6 +1211,297 @@ function appendToAgent(aid, html) {
     d.innerHTML = html;
     msgEl.appendChild(d.firstElementChild);
     scrollChat(aid);
+  }
+}
+
+// ============================================================
+// 任务计划（每轮问答的计划与执行详情）
+// ============================================================
+
+function getAgentMode(aid) {
+  const a = agents.find(x => x.id === aid);
+  return (a && a.llm_config && a.llm_config.mode) || 'react';
+}
+
+function initPlanForTurn(aid, userMsg) {
+  const cs = getCS(aid);
+  const mode = getAgentMode(aid);
+  const base = [];
+  if (mode === 'plan_solve') {
+    base.push(
+      { id: 'step_understand', title: '理解告警与上下文', desc: '梳理本轮告警背景、范围与影响。', status: 'in_progress', logs: [] },
+      { id: 'step_collect', title: '收集监控与日志数据', desc: '查询关键指标与日志，补充证据。', status: 'pending', logs: [] },
+      { id: 'step_root', title: '定位根因', desc: '基于收集的数据进行因果分析与假设验证。', status: 'pending', logs: [] },
+      { id: 'step_report', title: '输出报告与处理建议', desc: '整理根因结论，输出结构化 PDF 报告和后续建议。', status: 'pending', logs: [] },
+    );
+  } else {
+    base.push(
+      { id: 'step_react_collect', title: '即时信息收集', desc: '根据当前问题即时选择监控 / 日志等工具收集信息。', status: 'in_progress', logs: [] },
+      { id: 'step_react_reason', title: '边查边推理', desc: '结合工具输出逐步缩小范围并给出结论。', status: 'pending', logs: [] },
+    );
+  }
+  cs.plan = base;
+  renderPlan(aid);
+}
+
+function appendPlanLog(aid, stepId, text) {
+  const cs = getCS(aid);
+  const step = cs.plan.find(s => s.id === stepId);
+  if (!step) return;
+  step.logs = step.logs || [];
+  step.logs.push(text);
+}
+
+function updatePlanOnToolCall(aid, toolName, argsPreview) {
+  const cs = getCS(aid);
+  if (!cs.plan || cs.plan.length === 0) return;
+  const name = (toolName || '').toLowerCase();
+  let targetId = null;
+  if (name.includes('metric') || name.includes('monitor')) {
+    targetId = 'step_collect';
+  } else if (name.includes('log')) {
+    targetId = 'step_collect';
+  } else if (name.includes('pdf')) {
+    targetId = 'step_report';
+  } else {
+    targetId = cs.plan[cs.plan.length - 1].id;
+  }
+  const step = cs.plan.find(s => s.id === targetId) || cs.plan[0];
+  if (!step) return;
+  cs.plan.forEach(s => {
+    if (s.id === step.id) {
+      s.status = 'in_progress';
+    }
+  });
+  appendPlanLog(aid, step.id, `开始调用工具：${toolName}\n参数：${argsPreview}`);
+  renderPlan(aid);
+}
+
+function updatePlanOnToolEnd(aid, toolName, resultPreview) {
+  const cs = getCS(aid);
+  if (!cs.plan || cs.plan.length === 0) return;
+  const name = (toolName || '').toLowerCase();
+  let targetId = null;
+  if (name.includes('metric') || name.includes('monitor')) {
+    targetId = 'step_collect';
+  } else if (name.includes('log')) {
+    targetId = 'step_collect';
+  } else if (name.includes('pdf')) {
+    targetId = 'step_report';
+  } else {
+    targetId = cs.plan[cs.plan.length - 1].id;
+  }
+  const step = cs.plan.find(s => s.id === targetId) || cs.plan[0];
+  if (!step) return;
+  step.status = 'completed';
+  appendPlanLog(aid, step.id, `工具完成：${toolName}\n结果摘要：${resultPreview}`);
+  renderPlan(aid);
+}
+
+function updatePlanOnThinking(aid, text) {
+  const cs = getCS(aid);
+  if (!cs.plan || cs.plan.length === 0) return;
+  const current = cs.plan.find(s => s.status === 'in_progress') || cs.plan[0];
+  const snippet = (text || '').split('\n').slice(0, 2).join('\n').trim();
+  if (!snippet) return;
+  appendPlanLog(aid, current.id, `思考片段：\n${snippet}`);
+  renderPlan(aid);
+}
+
+function finalizePlanOnDone(aid) {
+  const cs = getCS(aid);
+  if (!cs.plan || cs.plan.length === 0) return;
+  cs.plan.forEach(s => {
+    if (s.status === 'in_progress') s.status = 'completed';
+  });
+  renderPlan(aid);
+}
+
+function renderPlan(aid) {
+  const cs = getCS(aid);
+  const mode = getAgentMode(aid);
+  const plan = cs.plan || [];
+  const modeEl = document.getElementById('planMode-' + aid);
+  const countEl = document.getElementById('planCount-' + aid);
+  const hintEl = document.getElementById('planHint-' + aid);
+  const cont = document.getElementById('planContainer-' + aid);
+  const empty = document.getElementById('planEmpty-' + aid);
+  if (!cont) return;
+  if (modeEl) {
+    modeEl.textContent = mode === 'plan_solve' ? 'Plan-and-Solver 模式' : 'ReAct 模式';
+  }
+  if (hintEl) {
+    hintEl.textContent = mode === 'plan_solve'
+      ? '本轮会先给出任务计划，再按计划逐步执行。'
+      : '本轮采用 ReAct 策略，Agent 会边思考边调用工具。';
+  }
+  cont.querySelectorAll('.plan-step').forEach(el => el.remove());
+  if (!plan.length) {
+    if (empty) empty.style.display = 'flex';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  const active = plan.filter(t => t.status !== 'cancelled');
+  const completed = plan.filter(t => t.status === 'completed').length;
+  if (countEl) countEl.textContent = `${completed} / ${active.length}`;
+  plan.forEach(step => {
+    const div = document.createElement('div');
+    div.className = 'plan-step ' + (step.status ? (step.status + '-step') : '');
+    const logs = (step.logs || []).join('\n\n');
+    div.innerHTML = `
+      <div class="plan-step-title">${esc(step.title || '')}</div>
+      <div class="plan-step-desc">${esc(step.desc || '')}</div>
+      ${logs ? `<div class="plan-step-log">${esc(logs)}</div>` : ''}
+    `;
+    cont.appendChild(div);
+  });
+}
+
+/**
+ * 在当前会话最后一条 AI 消息下方挂载“导出与发送”操作区
+ * - 自动取最后一条 AI 文本作为报告内容
+ * - 通过后端 /api/agents/{aid}/report/pdf 与 /report/email 完成导出和发信
+ */
+async function attachReportActions(aid) {
+  const cs = getCS(aid);
+  if (!cs.msgLog || cs.msgLog.length === 0) return;
+
+  // 查找最后一条 AI 消息
+  let lastAiText = '';
+  for (let i = cs.msgLog.length - 1; i >= 0; i--) {
+    const m = cs.msgLog[i];
+    if (m.t === 'ai' && m.text && m.text.trim()) {
+      lastAiText = m.text.trim();
+      break;
+    }
+  }
+  if (!lastAiText) return;
+
+  const msgEl = document.getElementById('chatMsg-' + aid);
+  if (!msgEl) return;
+
+  // 在 DOM 中找到最后一个 AI 文本块
+  const aiBlocks = msgEl.querySelectorAll('.msg .ai-text');
+  if (!aiBlocks.length) return;
+  const last = aiBlocks[aiBlocks.length - 1];
+
+  // 如果已经有操作区则不重复添加
+  if (last.nextElementSibling && last.nextElementSibling.classList.contains('report-actions')) {
+    return;
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'report-actions';
+  actions.innerHTML = `
+    <span style="color:var(--text-3);">本次分析已完成，您可以：</span>
+    <button type="button" class="btn primary" onclick="downloadCurrentReport('${aid}')">
+      <span>📄</span><span>下载 PDF 报告</span>
+    </button>
+    <button type="button" class="btn" onclick="sendCurrentReportByEmail('${aid}')">
+      <span>✉️</span><span>发送到邮箱</span>
+    </button>
+  `;
+  last.insertAdjacentElement('afterend', actions);
+}
+
+async function downloadCurrentReport(aid) {
+  const cs = getCS(aid);
+  if (!cs.msgLog || cs.msgLog.length === 0) {
+    alert('当前对话中还没有可导出的报告内容。');
+    return;
+  }
+  let reportText = '';
+  for (let i = cs.msgLog.length - 1; i >= 0; i--) {
+    const m = cs.msgLog[i];
+    if (m.t === 'ai' && m.text && m.text.trim()) {
+      reportText = m.text.trim();
+      break;
+    }
+  }
+  if (!reportText) {
+    alert('未找到最新的 AI 报告内容，无法生成 PDF。');
+    return;
+  }
+
+  const a = agents.find(x => x.id === aid);
+  const alertId = prompt('请输入本次告警的 ID（例如 488197）：', '');
+  if (!alertId) return;
+
+  try {
+    const resp = await fetch(`/api/agents/${encodeURIComponent(aid)}/report/pdf`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ alert_id: alertId, report_text: reportText }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+
+    // 触发浏览器下载
+    const blob = await resp.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `boguan_report_${alertId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    alert('生成或下载 PDF 失败：' + e.message);
+  }
+}
+
+async function sendCurrentReportByEmail(aid) {
+  const cs = getCS(aid);
+  if (!cs.msgLog || cs.msgLog.length === 0) {
+    alert('当前对话中还没有可发送的报告内容。');
+    return;
+  }
+  let reportText = '';
+  for (let i = cs.msgLog.length - 1; i >= 0; i--) {
+    const m = cs.msgLog[i];
+    if (m.t === 'ai' && m.text && m.text.trim()) {
+      reportText = m.text.trim();
+      break;
+    }
+  }
+  if (!reportText) {
+    alert('未找到最新的 AI 报告内容，无法发送邮件。');
+    return;
+  }
+
+  const email = prompt('请输入接收报告的邮箱地址：', '');
+  if (!email) return;
+  const emailTrim = email.trim();
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRe.test(emailTrim)) {
+    alert('邮箱格式不正确，请重新输入。');
+    return;
+  }
+  const alertId = prompt('请输入本次告警的 ID（例如 488197）：', '');
+  if (!alertId) return;
+
+  try {
+    const resp = await fetch(`/api/agents/${encodeURIComponent(aid)}/report/email`, {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        alert_id: alertId,
+        report_text: reportText,
+        to_email: emailTrim,
+      }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const data = await resp.json();
+    if (data && data.ok) {
+      alert('邮件已发送，请稍后查收。');
+    } else {
+      alert('邮件发送接口返回异常，请稍后重试。');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('发送邮件失败：' + e.message);
   }
 }
 
@@ -1074,6 +1542,9 @@ function sendMsg(aid) {
   if (!a) return;
 
   const cs = getCS(aid);
+
+  // 为本轮对话初始化任务计划视图
+  initPlanForTurn(aid, msg);
 
   // 如果已有对话（多轮），先插入轮次分隔线
   const hasPrior = cs.threadId && cs.msgLog.length > 0;
@@ -1197,6 +1668,7 @@ function handleChatEvent(aid, type, data) {
       cs.thinkBuf += data.text;
       cs.thinkEl.textContent = cs.thinkBuf.replace(/\n{3,}/g,'\n\n').replace(/\n+$/,'');
       scrollChat(aid);
+      updatePlanOnThinking(aid, data.text);
       break;
 
     case 'token':
@@ -1208,7 +1680,11 @@ function handleChatEvent(aid, type, data) {
       if (!cs.aiEl) {
         const block = document.createElement('div');
         block.className = 'msg';
-        block.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="ai-text"><span class="cursor"></span></div></div>`;
+        block.innerHTML = `
+          <div class="msg-avatar">${avatar}</div>
+          <div class="msg-body">
+            <div class="ai-text"><span class="cursor"></span></div>
+          </div>`;
         msgEl.appendChild(block);
         cs.aiEl = block.querySelector('.ai-text');
         cs.aiEl._buf = '';
@@ -1244,6 +1720,7 @@ function handleChatEvent(aid, type, data) {
         </div><div class="tool-card-body"><pre>${esc(data.args)}</pre></div></div></div>`;
       msgEl.appendChild(card);
       scrollChat(aid);
+      updatePlanOnToolCall(aid, data.name, data.args || '');
       break;
     }
 
@@ -1258,6 +1735,7 @@ function handleChatEvent(aid, type, data) {
         </div><div class="tool-card-body"><pre>${esc(result)}</pre></div></div></div>`;
       msgEl.appendChild(card);
       scrollChat(aid);
+      updatePlanOnToolEnd(aid, data.name, result);
       break;
     }
 
@@ -1275,7 +1753,6 @@ function handleChatEvent(aid, type, data) {
       if (cs.aiEl && cs.aiEl._buf) {
         cs.msgLog.push({ t: 'ai', text: cs.aiEl._buf.replace(/\n{3,}/g,'\n\n').trim() });
         const cc = cs.aiEl.querySelector('.cursor'); if(cc) cc.remove();
-        cs.aiEl = null;
       }
       // 保存最后的思考内容
       if (cs.thinkEl && cs.thinkBuf) {
@@ -1286,6 +1763,15 @@ function handleChatEvent(aid, type, data) {
       cs.streaming = false;
       enableAgentInput(aid);
       renderSidebar();
+      finalizePlanOnDone(aid);
+      // 在最后一条 AI 消息下方挂载报告操作区
+      try {
+        attachReportActions(aid);
+      } catch (e) {
+        console.error('挂载报告操作区失败:', e);
+      }
+      // 清理引用，准备下一轮
+      cs.aiEl = null;
       // 显示多轮对话提示
       updateMultiturnHint(aid);
       // 持久化对话历史到服务端
