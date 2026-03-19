@@ -7,6 +7,7 @@ Agent 对话接口，使用 Server-Sent Events 流式推送。
 import asyncio
 import json
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from langchain_core.messages import HumanMessage
@@ -37,6 +38,45 @@ def _fmt(args, mx: int = 300) -> str:
     except Exception:
         s = str(args)
     return s[:mx] + "..." if len(s) > mx else s
+
+
+def _extract_todos(payload: Any) -> list[dict]:
+    """
+    从 write_todos 的参数或返回值中提取标准 todo 列表。
+    """
+    data = payload
+    if hasattr(data, "content"):
+        data = getattr(data, "content")
+    if isinstance(data, str):
+        s = data.strip()
+        try:
+            data = json.loads(s)
+        except Exception:
+            return []
+
+    if isinstance(data, dict):
+        if isinstance(data.get("todos"), list):
+            data = data["todos"]
+        elif isinstance(data.get("items"), list):
+            data = data["items"]
+        else:
+            return []
+
+    if not isinstance(data, list):
+        return []
+
+    out: list[dict] = []
+    for i, it in enumerate(data):
+        if not isinstance(it, dict):
+            continue
+        out.append(
+            {
+                "id": str(it.get("id") or f"todo_{i+1}"),
+                "content": str(it.get("content") or it.get("title") or ""),
+                "status": str(it.get("status") or "pending"),
+            }
+        )
+    return out
 
 
 @router.get("/api/agents/{aid}/chat")
@@ -156,7 +196,15 @@ async def chat(aid: str, message: str, thread_id: str = "", user: dict = Depends
                         if tool_calls:
                             print(f"  [chat] LLM 输出 tool_calls: {[tc['name'] for tc in tool_calls]}")
                         for tc in tool_calls:
-                            if tc["name"] != "write_todos":
+                            if tc["name"] == "write_todos":
+                                todos = _extract_todos(tc.get("args", {}))
+                                if todos:
+                                    yield _sse("plan_update", {
+                                        "source": "write_todos_call",
+                                        "todos": todos,
+                                    })
+                                continue
+                            else:
                                 yield _sse("tool_call", {
                                     "name": tc["name"],
                                     "args": _fmt(tc.get("args", {})),
@@ -168,6 +216,12 @@ async def chat(aid: str, message: str, thread_id: str = "", user: dict = Depends
 
                 elif kind == "on_tool_end":
                     if name == "write_todos":
+                        todos = _extract_todos(data.get("output"))
+                        if todos:
+                            yield _sse("plan_update", {
+                                "source": "write_todos_result",
+                                "todos": todos,
+                            })
                         continue
                     print(f"  [chat] 工具完成: {name}")
                     output = data.get("output")

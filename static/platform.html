@@ -309,6 +309,22 @@ body {
   background:var(--bg-input);
   font-size:12px;
 }
+.plan-step.new-step {
+  box-shadow:0 0 0 1px rgba(59,130,246,0.4);
+  animation:planPulseNew 2s ease-out 1;
+}
+.plan-step.changed-step {
+  box-shadow:0 0 0 1px rgba(245,158,11,0.35);
+  animation:planPulseChanged 2s ease-out 1;
+}
+@keyframes planPulseNew {
+  0% { box-shadow:0 0 0 1px rgba(59,130,246,0.7); }
+  100% { box-shadow:0 0 0 0 rgba(59,130,246,0); }
+}
+@keyframes planPulseChanged {
+  0% { box-shadow:0 0 0 1px rgba(245,158,11,0.7); }
+  100% { box-shadow:0 0 0 0 rgba(245,158,11,0); }
+}
 .plan-step::before {
   content:'';
   position:absolute;
@@ -338,6 +354,23 @@ body {
   color:var(--text-3);
   font-size:11px;
   white-space:pre-wrap;
+}
+.plan-log-line { line-height:1.55; }
+.plan-log-line + .plan-log-line { margin-top:2px; }
+.plan-log-line.think-live {
+  color:var(--cyan);
+  overflow:hidden;
+  white-space:nowrap;
+  width:0;
+  animation:planTyping .8s steps(24, end) forwards, planCursor .9s step-end infinite;
+  border-right:1px solid rgba(6,182,212,0.85);
+}
+@keyframes planTyping {
+  from { width:0; }
+  to { width:100%; }
+}
+@keyframes planCursor {
+  50% { border-right-color:transparent; }
 }
 
 /* 消息 */
@@ -1244,12 +1277,92 @@ function initPlanForTurn(aid, userMsg) {
   renderPlan(aid);
 }
 
+function normalizePlanStatus(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'done') return 'completed';
+  if (s === 'doing' || s === 'running') return 'in_progress';
+  if (s === 'todo') return 'pending';
+  if (s === 'canceled') return 'cancelled';
+  return s || 'pending';
+}
+
+function applyPlanUpdateFromTodos(aid, todos, source) {
+  const cs = getCS(aid);
+  if (!Array.isArray(todos) || todos.length === 0) return;
+  if (!cs.plan || cs.plan.length === 0) {
+    cs.plan = [];
+  }
+
+  // 按 write_todos 的真实结果覆盖/同步前端计划
+  const next = [];
+  todos.forEach((t, idx) => {
+    const id = String(t.id || `todo_${idx + 1}`);
+    const old = cs.plan.find(x => x.id === id);
+    const status = normalizePlanStatus(t.status);
+    const title = t.content || old?.title || `任务 ${idx + 1}`;
+    const desc = old?.desc || '';
+    const isNew = !old;
+    const isChanged = !!old && (old.status !== status || old.title !== title);
+    next.push({
+      id,
+      title,
+      desc,
+      status,
+      logs: old?.logs || [],
+      _markNew: isNew,
+      _markChanged: isChanged,
+      expanded: old?.expanded || false,
+    });
+  });
+  cs.plan = next;
+
+  const inProgress = cs.plan.find(x => x.status === 'in_progress');
+  if (inProgress) {
+    appendPlanLog(aid, inProgress.id, source === 'write_todos_call' ? '计划已更新' : '状态已刷新');
+  }
+  renderPlan(aid);
+}
+
 function appendPlanLog(aid, stepId, text) {
   const cs = getCS(aid);
   const step = cs.plan.find(s => s.id === stepId);
   if (!step) return;
   step.logs = step.logs || [];
-  step.logs.push(text);
+  const t = (text || '').trim();
+  if (!t) return;
+  if (step.logs.length && step.logs[step.logs.length - 1] === t) return;
+  step.logs.push(t);
+  if (step.logs.length > 6) {
+    step.logs = step.logs.slice(step.logs.length - 6);
+  }
+}
+
+function shortText(s, n) {
+  const t = String(s || '').replace(/\s+/g, ' ').trim();
+  return t.length > n ? t.slice(0, n) + '…' : t;
+}
+
+function summarizeArgs(argsPreview) {
+  if (!argsPreview) return '无参数';
+  try {
+    const obj = typeof argsPreview === 'string' ? JSON.parse(argsPreview) : argsPreview;
+    if (!obj || typeof obj !== 'object') return shortText(argsPreview, 80);
+    const keys = Object.keys(obj).slice(0, 4);
+    const parts = keys.map(k => `${k}=${shortText(JSON.stringify(obj[k]), 24)}`);
+    return parts.join('；');
+  } catch (e) {
+    return shortText(argsPreview, 80);
+  }
+}
+
+function renderPlanLogsHtml(lines) {
+  if (!lines || !lines.length) return '';
+  const rows = lines.map((line, idx) => {
+    const text = String(line || '');
+    const thinkCls = text.startsWith('思路：') ? ' think-live' : '';
+    return `<div class="plan-log-line${thinkCls}" data-idx="${idx}">${esc(text)}</div>`;
+  }).join('');
+  return `<div class="plan-step-log">${rows}</div>`;
 }
 
 function updatePlanOnToolCall(aid, toolName, argsPreview) {
@@ -1273,7 +1386,7 @@ function updatePlanOnToolCall(aid, toolName, argsPreview) {
       s.status = 'in_progress';
     }
   });
-  appendPlanLog(aid, step.id, `开始调用工具：${toolName}\n参数：${argsPreview}`);
+  appendPlanLog(aid, step.id, `调用 ${toolName} · ${summarizeArgs(argsPreview)}`);
   renderPlan(aid);
 }
 
@@ -1294,7 +1407,7 @@ function updatePlanOnToolEnd(aid, toolName, resultPreview) {
   const step = cs.plan.find(s => s.id === targetId) || cs.plan[0];
   if (!step) return;
   step.status = 'completed';
-  appendPlanLog(aid, step.id, `工具完成：${toolName}\n结果摘要：${resultPreview}`);
+  appendPlanLog(aid, step.id, `${toolName} 完成 · ${shortText(resultPreview, 90)}`);
   renderPlan(aid);
 }
 
@@ -1303,8 +1416,15 @@ function updatePlanOnThinking(aid, text) {
   if (!cs.plan || cs.plan.length === 0) return;
   const current = cs.plan.find(s => s.status === 'in_progress') || cs.plan[0];
   const snippet = (text || '').split('\n').slice(0, 2).join('\n').trim();
-  if (!snippet) return;
-  appendPlanLog(aid, current.id, `思考片段：\n${snippet}`);
+  if (!snippet || snippet.length < 4) return;
+  const live = `思路：${shortText(snippet, 90)}`;
+  current.logs = current.logs || [];
+  // 思路使用“单条流式覆盖”而不是不断追加，避免碎片化输出
+  if (current.logs.length && String(current.logs[current.logs.length - 1]).startsWith('思路：')) {
+    current.logs[current.logs.length - 1] = live;
+  } else {
+    appendPlanLog(aid, current.id, live);
+  }
   renderPlan(aid);
 }
 
@@ -1347,15 +1467,34 @@ function renderPlan(aid) {
   if (countEl) countEl.textContent = `${completed} / ${active.length}`;
   plan.forEach(step => {
     const div = document.createElement('div');
-    div.className = 'plan-step ' + (step.status ? (step.status + '-step') : '');
-    const logs = (step.logs || []).join('\n\n');
+    let cls = 'plan-step ' + (step.status ? (step.status + '-step') : '');
+    if (step._markNew) cls += ' new-step';
+    if (step._markChanged) cls += ' changed-step';
+    div.className = cls;
+    const logsArr = step.logs || [];
+    const isExpanded = !!step.expanded;
+    const displayLogs = isExpanded ? logsArr : logsArr.slice(-3);
+    const logsHtml = renderPlanLogsHtml(displayLogs);
+    const statusText = step.status === 'completed'
+      ? '已完成'
+      : (step.status === 'in_progress' ? '进行中' : '待执行');
+    const toggleLabel = logsArr.length > 3 ? (isExpanded ? '收起' : '展开更多') : '';
     div.innerHTML = `
-      <div class="plan-step-title">${esc(step.title || '')}</div>
+      <div class="plan-step-title">${esc(step.title || '')} <span style="font-size:11px;color:var(--text-3);font-weight:400;">· ${statusText}</span></div>
       <div class="plan-step-desc">${esc(step.desc || '')}</div>
-      ${logs ? `<div class="plan-step-log">${esc(logs)}</div>` : ''}
+      ${logsHtml}
+      ${toggleLabel ? `<div style="margin-top:4px;font-size:11px;color:var(--text-3);cursor:pointer;" onclick="togglePlanStep('${aid}','${step.id}')">${toggleLabel}</div>` : ''}
     `;
     cont.appendChild(div);
   });
+}
+
+function togglePlanStep(aid, stepId) {
+  const cs = getCS(aid);
+  const step = cs.plan.find(s => s.id === stepId);
+  if (!step) return;
+  step.expanded = !step.expanded;
+  renderPlan(aid);
 }
 
 /**
@@ -1579,7 +1718,7 @@ function sendMsg(aid) {
   cs.es = es;
   cs.aiEl = null; cs.thinkEl = null; cs.thinkBuf = '';
 
-  const evts = ['start','status','llm_start','thinking','token','tool_call','tool_end','error','done'];
+  const evts = ['start','status','llm_start','thinking','token','tool_call','tool_end','plan_update','error','done'];
   evts.forEach(et => {
     es.addEventListener(et, e => {
       try { handleChatEvent(aid, et, JSON.parse(e.data)); } catch(err) { console.error(err); }
@@ -1736,6 +1875,11 @@ function handleChatEvent(aid, type, data) {
       msgEl.appendChild(card);
       scrollChat(aid);
       updatePlanOnToolEnd(aid, data.name, result);
+      break;
+    }
+
+    case 'plan_update': {
+      applyPlanUpdateFromTodos(aid, data.todos || [], data.source || '');
       break;
     }
 
