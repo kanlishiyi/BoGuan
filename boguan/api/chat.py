@@ -211,7 +211,20 @@ async def chat(aid: str, message: str, thread_id: str = "", user: dict = Depends
                                 })
 
                 elif kind == "on_tool_start":
-                    if name != "write_todos":
+                    if name == "write_todos":
+                        # 更可靠：直接从工具启动事件中提取本次 write_todos 入参
+                        todos = _extract_todos(
+                            data.get("input")
+                            or data.get("args")
+                            or data.get("kwargs")
+                            or {}
+                        )
+                        if todos:
+                            yield _sse("plan_update", {
+                                "source": "write_todos_start",
+                                "todos": todos,
+                            })
+                    else:
                         print(f"  [chat] 工具开始: {name}")
 
                 elif kind == "on_tool_end":

@@ -54,7 +54,7 @@ body {
 .header h1 {
   font-size:17px; font-weight:600;
   background:linear-gradient(135deg,var(--text-1),var(--cyan));
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
 }
 .header-badge {
   font-size:10px; padding:2px 7px; border-radius:20px;
@@ -234,35 +234,62 @@ body {
    对话界面
    ============================================================ */
 .chat-wrap { display:flex; flex-direction:column; height:100%; }
-.chat-main { flex:1; display:flex; min-height:0; }
+.chat-main { flex:1; display:flex; min-height:0; gap:0; }
+.chat-detail {
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  border-left:1px solid var(--border);
+  background:linear-gradient(180deg, rgba(15,23,42,0.38), rgba(15,23,42,0.16));
+}
+.chat-detail-header {
+  flex-shrink:0;
+  height:64px;
+  display:flex;
+  align-items:center;
+  padding:0 18px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg-secondary);
+  color:var(--text-1);
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:.2px;
+}
 .chat-messages { flex:1; overflow-y:auto; padding:16px 20px; }
 .chat-messages::-webkit-scrollbar { width:5px; }
 .chat-messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 
 /* 右侧任务计划栏 */
 .chat-plan {
-  width:300px;
-  max-width:320px;
-  border-left:1px solid var(--border);
-  background:var(--bg-secondary);
-  padding:12px 12px 12px 14px;
+  width:360px;
+  min-width:340px;
+  max-width:420px;
+  background:linear-gradient(180deg, rgba(17,24,39,0.95), rgba(17,24,39,0.86));
+  padding:0 12px 12px 14px;
   display:flex;
   flex-direction:column;
   gap:8px;
+  border-right:1px solid var(--border);
 }
 .chat-plan-header {
   display:flex;
   align-items:center;
   justify-content:space-between;
+  height:64px;
   font-size:12px;
   color:var(--text-2);
+  border-bottom:1px solid var(--border);
+  padding-right:4px;
 }
 .chat-plan-title {
   display:flex;
   align-items:center;
-  gap:6px;
-  font-weight:600;
+  gap:8px;
+  font-weight:700;
   color:var(--text-1);
+  font-size:15px;
+  letter-spacing:.2px;
 }
 .chat-plan-mode {
   font-size:11px;
@@ -278,6 +305,8 @@ body {
 .plan-hint {
   font-size:11px;
   color:var(--text-3);
+  margin-top:2px;
+  margin-bottom:2px;
 }
 .plan-container {
   flex:1;
@@ -302,12 +331,13 @@ body {
 .plan-empty p { font-size:12px; line-height:1.6; }
 .plan-step {
   position:relative;
-  padding:8px 8px 8px 20px;
-  margin-bottom:4px;
-  border-radius:8px;
-  border:1px solid var(--border);
-  background:var(--bg-input);
-  font-size:12px;
+  padding:14px 12px 12px 56px;
+  margin-bottom:8px;
+  border-radius:10px;
+  border:1px solid rgba(30,45,69,0.68);
+  background:rgba(13,19,32,0.52);
+  font-size:13px;
+  cursor:pointer;
 }
 .plan-step.new-step {
   box-shadow:0 0 0 1px rgba(59,130,246,0.4);
@@ -328,23 +358,114 @@ body {
 .plan-step::before {
   content:'';
   position:absolute;
-  left:8px;
-  top:10px;
-  width:8px;
-  height:8px;
+  left:12px;
+  top:18px;
+  width:34px;
+  height:34px;
   border-radius:999px;
-  background:var(--text-3);
+  border:2px solid rgba(100,116,139,0.65);
+  background:transparent;
+  box-sizing:border-box;
 }
-.plan-step.in_progress-step::before { background:var(--blue); box-shadow:0 0 6px rgba(59,130,246,0.7); }
-.plan-step.completed-step::before { background:var(--green); }
+.plan-step::after {
+  content:'';
+  position:absolute;
+  left:28px;
+  top:54px;
+  width:2px;
+  height:calc(100% + 10px);
+  background:rgba(16,185,129,0.35);
+}
+.plan-step:last-child::after {
+  display:none;
+}
+.plan-step.active {
+  border-color:var(--blue);
+  background:rgba(59,130,246,0.12);
+  box-shadow:0 0 0 1px rgba(59,130,246,0.18) inset;
+}
+.plan-step.in_progress-step::before {
+  border-color:var(--green);
+  box-shadow:0 0 0 3px rgba(16,185,129,0.18);
+}
+.plan-step.in_progress-step::before,
+.plan-step.completed-step::before {
+  content:'✓';
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#34d399;
+  font-size:20px;
+  font-weight:800;
+}
+.plan-step.completed-step::before {
+  border-color:var(--green);
+  background:rgba(16,185,129,0.12);
+}
 .plan-step-title {
   font-weight:600;
   color:var(--text-1);
-  margin-bottom:2px;
+  margin-bottom:4px;
+  font-size:15px;
+  line-height:1.3;
+}
+.plan-step-title .status-pill {
+  font-size:11px;
+  color:var(--text-3);
+  font-weight:400;
+  padding:2px 10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  margin-left:8px;
+  vertical-align:middle;
+}
+.plan-step.in_progress-step .status-pill {
+  border-color:var(--blue);
+  color:var(--blue);
+  background:rgba(59,130,246,0.12);
+}
+.plan-step.completed-step .status-pill {
+  border-color:var(--green);
+  color:var(--green);
+  background:rgba(16,185,129,0.12);
+}
+.plan-step.pending-step .status-pill {
+  border-color:var(--text-3);
+  color:var(--text-3);
+  background:rgba(148,163,184,0.12);
+}
+.plan-detail {
+  border-top:1px solid var(--border);
+  padding-top:8px;
+}
+.plan-detail-title {
+  font-size:12px;
+  color:var(--text-2);
+  margin-bottom:6px;
+}
+.plan-detail-box {
+  background:var(--bg-input);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px;
+  font-size:12px;
+}
+.plan-detail-empty {
+  color:var(--text-3);
+  font-size:11px;
 }
 .plan-step-desc {
   color:var(--text-2);
-  line-height:1.5;
+  line-height:1.45;
+  font-size:12px;
+}
+
+.chat-detail .ai-text,
+.chat-detail .think-block,
+.chat-detail .tool-card {
+  border-radius:10px;
+  border-color:rgba(30,45,69,0.78);
+  background:rgba(13,19,32,0.62);
 }
 .plan-step-log {
   margin-top:6px;
@@ -654,6 +775,9 @@ function getCS(aid) {
       historyLoaded: false, // 是否已从服务端加载历史
       turn: 0,              // 当前轮次
       plan: [],             // 当前轮任务计划
+      lastToolStepId: '',  // 最近一次 tool_call 对应到的计划步骤，用于 tool_end 追加日志
+      planFromPlanner: false, // 本轮是否已收到 write_todos 的真实计划
+      selectedPlanStepId: '', // 当前选中的计划步骤
     };
   }
   return chatStates[aid];
@@ -1017,11 +1141,10 @@ function ensureChatContainer(aid) {
     container.style.display = 'none';
     container.innerHTML = `
       <div class="chat-main">
-        <div class="chat-messages" id="chatMsg-${aid}"></div>
         <div class="chat-plan" id="chatPlan-${aid}">
           <div class="chat-plan-header">
             <div class="chat-plan-title">
-              <span>📋</span><span>任务计划</span>
+              <span>📋</span><span>执行计划</span>
             </div>
             <span class="chat-plan-mode" id="planMode-${aid}"></span>
             <span class="chat-plan-count" id="planCount-${aid}"></span>
@@ -1030,9 +1153,13 @@ function ensureChatContainer(aid) {
           <div class="plan-container" id="planContainer-${aid}">
             <div class="plan-empty" id="planEmpty-${aid}">
               <div class="icon">📋</div>
-              <p>本轮还没有明确的任务计划，Agent 可能会采用即兴 ReAct 策略。</p>
+              <p>本轮还没有明确的执行计划，等待智能体开始规划。</p>
             </div>
           </div>
+        </div>
+        <div class="chat-detail">
+          <div class="chat-detail-header">🕊 执行详情</div>
+          <div class="chat-messages" id="chatMsg-${aid}"></div>
         </div>
       </div>
       <div class="multiturn-hint" id="mtHint-${aid}" style="display:none;">
@@ -1258,6 +1385,8 @@ function getAgentMode(aid) {
 
 function initPlanForTurn(aid, userMsg) {
   const cs = getCS(aid);
+  cs.planFromPlanner = false;
+  cs.lastToolStepId = '';
   const mode = getAgentMode(aid);
   const base = [];
   if (mode === 'plan_solve') {
@@ -1274,21 +1403,24 @@ function initPlanForTurn(aid, userMsg) {
     );
   }
   cs.plan = base;
+  cs.selectedPlanStepId = base[0]?.id || '';
   renderPlan(aid);
 }
 
 function normalizePlanStatus(status) {
   const s = (status || '').toLowerCase();
-  if (s === 'done') return 'completed';
-  if (s === 'doing' || s === 'running') return 'in_progress';
-  if (s === 'todo') return 'pending';
-  if (s === 'canceled') return 'cancelled';
-  return s || 'pending';
+  if (!s) return 'pending';
+  if (s === 'done' || s === 'completed' || s === 'complete' || s === 'success') return 'completed';
+  if (s === 'doing' || s === 'running' || s === 'active' || s === 'inprogress' || s === 'in_progress') return 'in_progress';
+  if (s === 'todo' || s === 'pending' || s === 'wait' || s === 'queued') return 'pending';
+  if (s === 'canceled' || s === 'cancelled' || s === 'abort') return 'cancelled';
+  return s;
 }
 
 function applyPlanUpdateFromTodos(aid, todos, source) {
   const cs = getCS(aid);
   if (!Array.isArray(todos) || todos.length === 0) return;
+  cs.planFromPlanner = true;
   if (!cs.plan || cs.plan.length === 0) {
     cs.plan = [];
   }
@@ -1315,6 +1447,9 @@ function applyPlanUpdateFromTodos(aid, todos, source) {
     });
   });
   cs.plan = next;
+  if (!cs.selectedPlanStepId || !cs.plan.find(x => x.id === cs.selectedPlanStepId)) {
+    cs.selectedPlanStepId = cs.plan[0]?.id || '';
+  }
 
   const inProgress = cs.plan.find(x => x.status === 'in_progress');
   if (inProgress) {
@@ -1342,6 +1477,19 @@ function shortText(s, n) {
   return t.length > n ? t.slice(0, n) + '…' : t;
 }
 
+function pickThoughtLine(text) {
+  // 只选择包含中文的那一行，避免像 ".count" 这类代码片段
+  const lines = String(text || '').split('\n');
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    if (/[\u4e00-\u9fff]/.test(l)) {
+      return l;
+    }
+  }
+  return '';
+}
+
 function summarizeArgs(argsPreview) {
   if (!argsPreview) return '无参数';
   try {
@@ -1357,9 +1505,18 @@ function summarizeArgs(argsPreview) {
 
 function renderPlanLogsHtml(lines) {
   if (!lines || !lines.length) return '';
+  // 仅“最新一条思路”启用打字机动画，历史思路静态显示
+  let latestThinkIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const t = String(lines[i] || '');
+    if (t.startsWith('思路：')) {
+      latestThinkIdx = i;
+      break;
+    }
+  }
   const rows = lines.map((line, idx) => {
     const text = String(line || '');
-    const thinkCls = text.startsWith('思路：') ? ' think-live' : '';
+    const thinkCls = (idx === latestThinkIdx && text.startsWith('思路：')) ? ' think-live' : '';
     return `<div class="plan-log-line${thinkCls}" data-idx="${idx}">${esc(text)}</div>`;
   }).join('');
   return `<div class="plan-step-log">${rows}</div>`;
@@ -1368,24 +1525,20 @@ function renderPlanLogsHtml(lines) {
 function updatePlanOnToolCall(aid, toolName, argsPreview) {
   const cs = getCS(aid);
   if (!cs.plan || cs.plan.length === 0) return;
-  const name = (toolName || '').toLowerCase();
-  let targetId = null;
-  if (name.includes('metric') || name.includes('monitor')) {
-    targetId = 'step_collect';
-  } else if (name.includes('log')) {
-    targetId = 'step_collect';
-  } else if (name.includes('pdf')) {
-    targetId = 'step_report';
-  } else {
-    targetId = cs.plan[cs.plan.length - 1].id;
-  }
-  const step = cs.plan.find(s => s.id === targetId) || cs.plan[0];
+  // 如果 write_todos 已经标出了进行中的步骤，则工具调用只用于补充日志，不再强行改错状态
+  const current = cs.plan.find(s => s.status === 'in_progress') || cs.plan.find(s => s.status === 'doing');
+  const step = current || cs.plan[cs.plan.length - 1] || cs.plan[0];
   if (!step) return;
-  cs.plan.forEach(s => {
-    if (s.id === step.id) {
-      s.status = 'in_progress';
+  // 未收到 planner 计划时，采用前端兜底推进：确保存在一个进行中步骤
+  if (!cs.planFromPlanner) {
+    const hasInProgress = cs.plan.some(s => s.status === 'in_progress');
+    if (!hasInProgress) {
+      const firstPending = cs.plan.find(s => s.status === 'pending') || cs.plan[0];
+      if (firstPending) firstPending.status = 'in_progress';
     }
-  });
+  }
+  // 默认不在 tool_call 上强改状态：以 plan_update（write_todos）为主
+  cs.lastToolStepId = step.id;
   appendPlanLog(aid, step.id, `调用 ${toolName} · ${summarizeArgs(argsPreview)}`);
   renderPlan(aid);
 }
@@ -1393,20 +1546,18 @@ function updatePlanOnToolCall(aid, toolName, argsPreview) {
 function updatePlanOnToolEnd(aid, toolName, resultPreview) {
   const cs = getCS(aid);
   if (!cs.plan || cs.plan.length === 0) return;
-  const name = (toolName || '').toLowerCase();
-  let targetId = null;
-  if (name.includes('metric') || name.includes('monitor')) {
-    targetId = 'step_collect';
-  } else if (name.includes('log')) {
-    targetId = 'step_collect';
-  } else if (name.includes('pdf')) {
-    targetId = 'step_report';
-  } else {
-    targetId = cs.plan[cs.plan.length - 1].id;
-  }
-  const step = cs.plan.find(s => s.id === targetId) || cs.plan[0];
+  // 不在 tool_end 上改状态：以 plan_update（write_todos）为准；这里仅追加执行日志
+  const step = cs.plan.find(s => s.id === cs.lastToolStepId)
+    || cs.plan.find(s => s.status === 'in_progress')
+    || cs.plan[cs.plan.length - 1]
+    || cs.plan[0];
   if (!step) return;
-  step.status = 'completed';
+  // 未收到 planner 计划时，按顺序推进：完成当前 -> 激活下一个 pending
+  if (!cs.planFromPlanner) {
+    step.status = 'completed';
+    const nextPending = cs.plan.find(s => s.status === 'pending');
+    if (nextPending) nextPending.status = 'in_progress';
+  }
   appendPlanLog(aid, step.id, `${toolName} 完成 · ${shortText(resultPreview, 90)}`);
   renderPlan(aid);
 }
@@ -1415,7 +1566,7 @@ function updatePlanOnThinking(aid, text) {
   const cs = getCS(aid);
   if (!cs.plan || cs.plan.length === 0) return;
   const current = cs.plan.find(s => s.status === 'in_progress') || cs.plan[0];
-  const snippet = (text || '').split('\n').slice(0, 2).join('\n').trim();
+  const snippet = pickThoughtLine(text);
   if (!snippet || snippet.length < 4) return;
   const live = `思路：${shortText(snippet, 90)}`;
   current.logs = current.logs || [];
@@ -1431,6 +1582,8 @@ function updatePlanOnThinking(aid, text) {
 function finalizePlanOnDone(aid) {
   const cs = getCS(aid);
   if (!cs.plan || cs.plan.length === 0) return;
+  // done 表示这一轮结束；如果 planner 仍留有 in_progress，可保底标为已完成（避免“永远进行中”）
+  // 但不修改 cancelled 的步骤状态
   cs.plan.forEach(s => {
     if (s.status === 'in_progress') s.status = 'completed';
   });
@@ -1470,30 +1623,23 @@ function renderPlan(aid) {
     let cls = 'plan-step ' + (step.status ? (step.status + '-step') : '');
     if (step._markNew) cls += ' new-step';
     if (step._markChanged) cls += ' changed-step';
+    if (step.id === cs.selectedPlanStepId) cls += ' active';
     div.className = cls;
-    const logsArr = step.logs || [];
-    const isExpanded = !!step.expanded;
-    const displayLogs = isExpanded ? logsArr : logsArr.slice(-3);
-    const logsHtml = renderPlanLogsHtml(displayLogs);
     const statusText = step.status === 'completed'
       ? '已完成'
       : (step.status === 'in_progress' ? '进行中' : '待执行');
-    const toggleLabel = logsArr.length > 3 ? (isExpanded ? '收起' : '展开更多') : '';
     div.innerHTML = `
-      <div class="plan-step-title">${esc(step.title || '')} <span style="font-size:11px;color:var(--text-3);font-weight:400;">· ${statusText}</span></div>
+      <div class="plan-step-title">${esc(step.title || '')}<span class="status-pill">${statusText}</span></div>
       <div class="plan-step-desc">${esc(step.desc || '')}</div>
-      ${logsHtml}
-      ${toggleLabel ? `<div style="margin-top:4px;font-size:11px;color:var(--text-3);cursor:pointer;" onclick="togglePlanStep('${aid}','${step.id}')">${toggleLabel}</div>` : ''}
     `;
+    div.onclick = () => selectPlanStep(aid, step.id);
     cont.appendChild(div);
   });
 }
 
-function togglePlanStep(aid, stepId) {
+function selectPlanStep(aid, stepId) {
   const cs = getCS(aid);
-  const step = cs.plan.find(s => s.id === stepId);
-  if (!step) return;
-  step.expanded = !step.expanded;
+  cs.selectedPlanStepId = stepId;
   renderPlan(aid);
 }
 
