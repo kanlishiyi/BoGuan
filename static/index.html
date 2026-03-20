@@ -1013,8 +1013,50 @@ function clearBootstrapMarkers() {
 // ============================================================
 // 计划渲染
 // ============================================================
+function normalizeTodoStatus(status) {
+  const s = String(status || '').toLowerCase();
+  if (!s) return 'pending';
+  if (s === 'completed' || s === 'done' || s === 'success' || s === '已完成') return 'completed';
+  if (s === 'in_progress' || s === 'doing' || s === 'running' || s === '进行中') return 'in_progress';
+  if (s === 'cancelled' || s === 'canceled' || s === '已取消') return 'cancelled';
+  return 'pending';
+}
+
+function enforcePlanOrder(plan) {
+  // 保证同一时刻最多一个 in_progress，且不会出现后面的步骤先完成
+  let seenInProgress = false;
+  let seenPending = false;
+  plan.forEach((t) => {
+    const s = normalizeTodoStatus(t.status);
+    if (s === 'cancelled') {
+      t.status = 'cancelled';
+      return;
+    }
+    if (s === 'in_progress') {
+      if (seenInProgress || seenPending) {
+        t.status = 'pending';
+      } else {
+        t.status = 'in_progress';
+        seenInProgress = true;
+      }
+      return;
+    }
+    if (s === 'completed') {
+      if (seenInProgress || seenPending) {
+        t.status = 'pending';
+      } else {
+        t.status = 'completed';
+      }
+      return;
+    }
+    t.status = 'pending';
+    seenPending = true;
+  });
+}
+
 function renderPlan() {
   if (currentPlan.length === 0) return;
+  enforcePlanOrder(currentPlan);
 
   planEmpty.style.display = 'none';
   // 清除旧步骤

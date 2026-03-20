@@ -234,13 +234,23 @@ body {
    对话界面
    ============================================================ */
 .chat-wrap { display:flex; flex-direction:column; height:100%; }
-.chat-main { flex:1; display:flex; min-height:0; gap:0; }
+.chat-main {
+  flex:1;
+  display:flex;
+  min-height:0;
+  gap:0;
+  margin:10px 12px 0 12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  overflow:hidden;
+  background:linear-gradient(180deg, rgba(15,23,42,0.34), rgba(15,23,42,0.14));
+}
 .chat-detail {
   flex:1;
   min-width:0;
   display:flex;
   flex-direction:column;
-  border-left:1px solid var(--border);
+  border-left:1px solid rgba(30,45,69,0.9);
   background:linear-gradient(180deg, rgba(15,23,42,0.38), rgba(15,23,42,0.16));
 }
 .chat-detail-header {
@@ -250,7 +260,7 @@ body {
   align-items:center;
   padding:0 18px;
   border-bottom:1px solid var(--border);
-  background:var(--bg-secondary);
+  background:linear-gradient(180deg, rgba(17,24,39,0.98), rgba(17,24,39,0.9));
   color:var(--text-1);
   font-size:15px;
   font-weight:700;
@@ -262,15 +272,15 @@ body {
 
 /* 右侧任务计划栏 */
 .chat-plan {
-  width:360px;
-  min-width:340px;
-  max-width:420px;
+  width:300px;
+  min-width:280px;
+  max-width:340px;
   background:linear-gradient(180deg, rgba(17,24,39,0.95), rgba(17,24,39,0.86));
   padding:0 12px 12px 14px;
   display:flex;
   flex-direction:column;
   gap:8px;
-  border-right:1px solid var(--border);
+  border-right:1px solid rgba(30,45,69,0.9);
 }
 .chat-plan-header {
   display:flex;
@@ -280,7 +290,8 @@ body {
   font-size:12px;
   color:var(--text-2);
   border-bottom:1px solid var(--border);
-  padding-right:4px;
+  padding-right:6px;
+  background:linear-gradient(180deg, rgba(17,24,39,0.98), rgba(17,24,39,0.9));
 }
 .chat-plan-title {
   display:flex;
@@ -288,22 +299,50 @@ body {
   gap:8px;
   font-weight:700;
   color:var(--text-1);
-  font-size:15px;
+  font-size:14px;
   letter-spacing:.2px;
 }
 .chat-plan-mode {
-  font-size:11px;
-  padding:2px 8px;
+  font-size:10px;
+  padding:2px 7px;
   border-radius:999px;
   border:1px solid var(--border);
   color:var(--text-3);
 }
+.plan-density-toggle {
+  font-size:10px;
+  padding:2px 7px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  color:var(--text-3);
+  background:transparent;
+  cursor:pointer;
+}
+.plan-density-toggle:hover {
+  border-color:var(--blue);
+  color:var(--blue);
+}
+.chat-plan.compact .plan-step {
+  padding:11px 10px 10px 48px;
+  margin-bottom:6px;
+}
+.chat-plan.compact .plan-step::before {
+  width:30px;
+  height:30px;
+  top:14px;
+}
+.chat-plan.compact .plan-step::after {
+  top:46px;
+}
+.chat-plan.compact .plan-step-title { font-size:13px; margin-bottom:3px; }
+.chat-plan.compact .plan-step-desc { font-size:10px; line-height:1.35; }
+.chat-plan.compact .status-pill { font-size:9px; padding:1px 6px; }
 .chat-plan-count {
-  font-size:11px;
+  font-size:10px;
   color:var(--text-3);
 }
 .plan-hint {
-  font-size:11px;
+  font-size:10px;
   color:var(--text-3);
   margin-top:2px;
   margin-bottom:2px;
@@ -331,12 +370,12 @@ body {
 .plan-empty p { font-size:12px; line-height:1.6; }
 .plan-step {
   position:relative;
-  padding:14px 12px 12px 56px;
-  margin-bottom:8px;
+  padding:12px 10px 10px 50px;
+  margin-bottom:10px;
   border-radius:10px;
   border:1px solid rgba(30,45,69,0.68);
   background:rgba(13,19,32,0.52);
-  font-size:13px;
+  font-size:11px;
   cursor:pointer;
 }
 .plan-step.new-step {
@@ -359,9 +398,9 @@ body {
   content:'';
   position:absolute;
   left:12px;
-  top:18px;
-  width:34px;
-  height:34px;
+  top:14px;
+  width:28px;
+  height:28px;
   border-radius:999px;
   border:2px solid rgba(100,116,139,0.65);
   background:transparent;
@@ -370,11 +409,18 @@ body {
 .plan-step::after {
   content:'';
   position:absolute;
-  left:28px;
-  top:54px;
+  left:25px;
+  top:44px;
   width:2px;
-  height:calc(100% + 10px);
-  background:rgba(16,185,129,0.35);
+  height:calc(100% + 12px);
+  background:linear-gradient(
+    180deg,
+    rgba(16,185,129,0.1) 0%,
+    rgba(16,185,129,0.75) 45%,
+    rgba(16,185,129,0.1) 100%
+  );
+  background-size:100% 28px;
+  animation:planFlowDown 1.2s linear infinite;
 }
 .plan-step:last-child::after {
   display:none;
@@ -395,7 +441,7 @@ body {
   align-items:center;
   justify-content:center;
   color:#34d399;
-  font-size:20px;
+  font-size:14px;
   font-weight:800;
 }
 .plan-step.completed-step::before {
@@ -405,18 +451,18 @@ body {
 .plan-step-title {
   font-weight:600;
   color:var(--text-1);
-  margin-bottom:4px;
-  font-size:15px;
+  margin-bottom:3px;
+  font-size:12px;
   line-height:1.3;
 }
 .plan-step-title .status-pill {
-  font-size:11px;
+  font-size:8px;
   color:var(--text-3);
   font-weight:400;
-  padding:2px 10px;
+  padding:1px 6px;
   border-radius:999px;
   border:1px solid var(--border);
-  margin-left:8px;
+  margin-left:6px;
   vertical-align:middle;
 }
 .plan-step.in_progress-step .status-pill {
@@ -456,8 +502,8 @@ body {
 }
 .plan-step-desc {
   color:var(--text-2);
-  line-height:1.45;
-  font-size:12px;
+  line-height:1.4;
+  font-size:9px;
 }
 
 .chat-detail .ai-text,
@@ -466,6 +512,12 @@ body {
   border-radius:10px;
   border-color:rgba(30,45,69,0.78);
   background:rgba(13,19,32,0.62);
+}
+.chat-detail .msg { margin-bottom:18px; }
+
+@keyframes planFlowDown {
+  from { background-position: 0 0; }
+  to { background-position: 0 28px; }
 }
 .plan-step-log {
   margin-top:6px;
@@ -1147,6 +1199,7 @@ function ensureChatContainer(aid) {
               <span>📋</span><span>执行计划</span>
             </div>
             <span class="chat-plan-mode" id="planMode-${aid}"></span>
+            <button class="plan-density-toggle" id="planDensity-${aid}" onclick="togglePlanDensity('${aid}')">标准</button>
             <span class="chat-plan-count" id="planCount-${aid}"></span>
           </div>
           <div class="plan-hint" id="planHint-${aid}"></div>
@@ -1446,6 +1499,36 @@ function applyPlanUpdateFromTodos(aid, todos, source) {
       expanded: old?.expanded || false,
     });
   });
+  // 顺序一致性校正：避免出现“前一步进行中，后一步已完成”的状态倒挂
+  let seenInProgress = false;
+  let seenPending = false;
+  next.forEach((item) => {
+    const s = normalizePlanStatus(item.status);
+    if (s === 'cancelled') {
+      item.status = 'cancelled';
+      return;
+    }
+    if (s === 'in_progress') {
+      if (seenInProgress || seenPending) {
+        item.status = 'pending';
+      } else {
+        item.status = 'in_progress';
+        seenInProgress = true;
+      }
+      return;
+    }
+    if (s === 'completed') {
+      if (seenInProgress || seenPending) {
+        item.status = 'pending';
+      } else {
+        item.status = 'completed';
+      }
+      return;
+    }
+    item.status = 'pending';
+    seenPending = true;
+  });
+
   cs.plan = next;
   if (!cs.selectedPlanStepId || !cs.plan.find(x => x.id === cs.selectedPlanStepId)) {
     cs.selectedPlanStepId = cs.plan[0]?.id || '';
@@ -1594,12 +1677,20 @@ function renderPlan(aid) {
   const cs = getCS(aid);
   const mode = getAgentMode(aid);
   const plan = cs.plan || [];
+  const density = localStorage.getItem('boguan_plan_density') || 'standard';
   const modeEl = document.getElementById('planMode-' + aid);
   const countEl = document.getElementById('planCount-' + aid);
   const hintEl = document.getElementById('planHint-' + aid);
   const cont = document.getElementById('planContainer-' + aid);
   const empty = document.getElementById('planEmpty-' + aid);
+  const wrap = document.getElementById('chatPlan-' + aid);
+  const densityBtn = document.getElementById('planDensity-' + aid);
   if (!cont) return;
+  if (wrap) {
+    if (density === 'compact') wrap.classList.add('compact');
+    else wrap.classList.remove('compact');
+  }
+  if (densityBtn) densityBtn.textContent = density === 'compact' ? '紧凑' : '标准';
   if (modeEl) {
     modeEl.textContent = mode === 'plan_solve' ? 'Plan-and-Solver 模式' : 'ReAct 模式';
   }
@@ -1635,6 +1726,13 @@ function renderPlan(aid) {
     div.onclick = () => selectPlanStep(aid, step.id);
     cont.appendChild(div);
   });
+}
+
+function togglePlanDensity(aid) {
+  const cur = localStorage.getItem('boguan_plan_density') || 'standard';
+  const next = cur === 'compact' ? 'standard' : 'compact';
+  localStorage.setItem('boguan_plan_density', next);
+  renderPlan(aid);
 }
 
 function selectPlanStep(aid, stepId) {
